@@ -1,4 +1,5 @@
 import elt
+import xref
 
 import idaapi 
 import idautils
@@ -10,8 +11,10 @@ import idc
 
 
 # TODO : real name for constructor get_func and get_block
+# TODO : real name for MFunctions
 
 def MFunctions():
+    "Return all functions in IDB"
     return (IDAFunction(addr) for addr in idautils.Functions())
 
 class IDAFunction(elt.IDANamedSizedElf):
@@ -113,6 +116,10 @@ class IDAInstr(elt.IDASizedElt):
             return self._block
         return IDABlock.get_block(self.addr)
         
+    @property
+    def next(self, ignore_normal_flow = False):
+        return [xref.CodeXref(x) for x in  idautils.XrefsFrom(self.addr, ignore_normal_flow)]
+        
     def set_comment(self, comment, repeteable=True):
         if repeteable:
             idc.MakeRptCmt(self.addr, comment)
@@ -121,7 +128,7 @@ class IDAInstr(elt.IDASizedElt):
         
     def get_comment(self, repeteable=True):
         return idc.CommentEx(self.addr, repeteable)
-        
+         
     def __IDA_repr__(self):
         return self.completeinstr
         

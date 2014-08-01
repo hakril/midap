@@ -1,4 +1,7 @@
 import elt
+from functions import IDAInstr
+
+import idc
 
 # Testing code: not sure its really usefull..
 
@@ -10,11 +13,11 @@ class Xref(object):
      
     @property
     def frm(self):
-        return self.xref.frm
+        return IDAInstr(self.xref.frm)
         
     @property   
     def to(self):
-        return self.xref.to
+        return IDAInstr(self.xref.to)
         
     @property    
     def type(self):
@@ -29,11 +32,10 @@ class Xref(object):
         return self.xref.user
            
     def __repr__(self):
-        return "<{0} <{1} to {2}>>".format(self.__class__.__name__, hex(self.frm), hex(self.to))
-        
+        return "<{0} <{1} to {2}>>".format(self.__class__.__name__, hex(self.xref.frm), hex(self.xref.to))
 
+        
 class CodeXref(Xref):
-      
     @property
     def is_call(self):
         return (self.xref.type & 0x1f) in [idc.fl_CF, idc.fl_CN]
