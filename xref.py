@@ -1,34 +1,41 @@
 import elt
-from functions import IDAInstr
+import functions
 
 import idc
 
 # Testing code: not sure its really usefull..
+# If really usefull: rewrite this horrible code :D
+# RealHierarchy ..
+
+#Xref to IAT: to code but not really
 
 # from / to : instruction ? if code
+
+
+# xref to stack / to real data (Named)
 
 class Xref(object):
     def __init__(self, xref):
         self.xref = xref
-     
+            
     @property
     def frm(self):
-        return IDAInstr(self.xref.frm)
-        
+        return elt.IDAElt(self.xref.frm)
+
     @property   
     def to(self):
-        return IDAInstr(self.xref.to)
-        
+        return elt.IDAElt(self.xref.to)
+            
     @property    
     def type(self):
         return self.xref.type 
         
     @property
-    def iscode(self):
+    def is_code(self):
         return self.xref.iscode
      
     @property
-    def isuser(self):
+    def is_user(self):
         return self.xref.user
            
     def __repr__(self):
@@ -36,6 +43,16 @@ class Xref(object):
 
         
 class CodeXref(Xref):
+    """ Code to Code xref """
+
+    @property
+    def frm(self):
+        return functions.IDAInstr(self.xref.frm)
+
+    @property   
+    def to(self):
+        return functions.IDAInstr(self.xref.to)
+
     @property
     def is_call(self):
         return (self.xref.type & 0x1f) in [idc.fl_CF, idc.fl_CN]
@@ -45,5 +62,37 @@ class CodeXref(Xref):
         return (self.xref.type & 0x1f) in [idc.fl_JF, idc.fl_JN]
     
     @property
-    def is_normal(self):
+    def is_normal(self): # name it 'is_flow' ?
         return (self.xref.type & 0x1f) ==  idc.fl_F 
+        
+class DataXref(Xref):
+    """ Data to Data xref """
+ 
+    def __init__(self, xref):
+        super(DataXref, self).__init__(xref)
+        if (self.xref.type & 0x1f) in (idc.dr_I,):
+            print("DEBUG strange xref with dr_I")
+                        
+    @property
+    def is_offset(self):
+        return (self.xref.type & 0x1f) == idc.dr_O
+ 
+    @property
+    def is_write(self):
+        return (self.xref.type & 0x1f) == idc.dr_W
+        
+    @property
+    def is_read(self):
+        return (self.xref.type & 0x1f) == idc.dr_R
+    
+    @property
+    def is_text(self): # name it 'is_flow' ?
+        return (self.xref.type & 0x1f) == idc.dr_T
+    
+    
+class CodeToDataXref(DataXref):
+    """ Code to Data xref """
+    @property
+    def frm(self):
+        return functions.IDAInstr(self.xref.frm)
+        

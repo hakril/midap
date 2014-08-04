@@ -13,9 +13,7 @@ import idc
 # TODO : real name for constructor get_func and get_block
 # TODO : real name for MFunctions
 
-def MFunctions():
-    "Return all functions in IDB"
-    return (IDAFunction(addr) for addr in idautils.Functions())
+
 
 class IDAFunction(elt.IDANamedSizedElf):
 
@@ -24,11 +22,15 @@ class IDAFunction(elt.IDANamedSizedElf):
     def get_func(cls, addr):
         func_t = idaapi.get_func(addr)
         if func_t is None:
-            raise ValueError("{0} get_func failed (not the addr in a function".format(self.__class__.__name__))
+            raise ValueError("{0} get_func failed (not the addr in a function".format(cls.__name__))
         return cls(func_t.startEA)
-
-    # Functions    
         
+    #all getter
+    @classmethod
+    def get_all(cls):
+        return [cls(addr) for addr in idautils.Functions()]
+
+    # Functions        
     def __init__(self, addr):
         self.func_t = idaapi.get_func(addr)
         if self.func_t is None:
@@ -55,11 +57,16 @@ class IDAFunction(elt.IDANamedSizedElf):
 
 class IDABlock(elt.IDANamedSizedElf):
 
-    #Constructors
+      #Constructors
     @classmethod
     def get_block(cls, addr):
         f = get_func(addr) # TODO: handle error
         return [b for b in f.Blocks if addr in b][0]
+        
+    #all getter
+    @classmethod
+    def get_all(cls):
+        return [b for f in IDAFunction.get_all() for b in f.Blocks]
         
     def __init__(self, basic_block):
         super(IDABlock, self).__init__(basic_block.startEA, basic_block.endEA)
@@ -103,6 +110,11 @@ class IDAInstr(elt.IDASizedElt):
         self.completeinstr = "{0} {1}".format(self.mnemo, ",".join(self.operands))
         self._block = block
         
+    #all getter
+    @classmethod
+    def get_all(cls):
+        return [i for b in IDABlock.get_all() for i in b.Instrs]
+        
     @property        
     def func(self):
         try:
@@ -118,7 +130,12 @@ class IDAInstr(elt.IDASizedElt):
         
     @property
     def next(self, ignore_normal_flow = False):
-        return [xref.CodeXref(x) for x in  idautils.XrefsFrom(self.addr, ignore_normal_flow)]
+        return [xref.CodeXref(x) for x in idautils.XrefsFrom(self.addr, ignore_normal_flow) if x.iscode]
+        
+    #Todo : rename
+    @property
+    def data(self):
+        return [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
         
     def set_comment(self, comment, repeteable=True):
         if repeteable:
