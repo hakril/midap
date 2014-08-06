@@ -1,40 +1,143 @@
 import functools
+import collections
+
 import idaapi
+import idautils
 
 import elt
 
+late_import = ['functions']
+
+
+#WIP: Find good export / import API
+
+# TODO : merge both code
+       
+
+class IDAExport(elt.IDANamedElt):
+    entry_point = None
+     
+    def __init__(self, addr, ord, name):
+        super(IDAExport, self).__init__(addr)
+        self.export_name = name
+        self.ord = ord
+        self._func = None
+        
+    # Overwrite the  IDANamedElt by a read-only name
+    @property
+    def name(self):
+        return self.export_name
+      
+    @property
+    def func(self):
+        "DAT FUNCTION"
+        if self._func is not None:
+            return self._func
+        self._func = functions.IDAFunction(self.addr)
+        return self._func
+        
+    
+class IDAExportList(object):
+    def __init__(self):
+        self.exports_by_addr = collections.defaultdict(list)
+        self.exports_by_name = {}
+        for index, ordinal, addr, name in idautils.Entries():
+           x = IDAExport(addr, ordinal, name)
+           self.exports_by_addr[addr].append(x)
+           self.exports_by_name[name] = x 
+           #Entry point : doesnt works for ELF..
+           # TODO: find real entry point method
+           if b == c:
+               self.entry_point = x
+        # No more default dict !
+        self.exports_by_addr.default_factory = None
+     
+    # On adr | name | addr and name ?
+    def __contains__(self, value):
+        if isinstance(value, basestring):
+            return value in self.export_by_name
+        return int(value) in self.exports_by_addr
+       
+       
+    def __getitem__(self, value):
+        if isinstance(value, basestring):
+            return self.get_by_name(value)
+        return self.get_by_addr(value)
+        
+    def get_by_name(self, name):
+        return self.exports_by_name[name]
+     
+    def get_by_addr(self, addr):
+        return self.exports_by_addr[int(addr)]    
+        
+    @property
+    def all(self):
+        return list(self.exports_by_name.values())
+        
+    def __iter__(self):
+        return iter(self.all)
+        
 
 class IDAImport(elt.IDANamedElt):
-    all = {}
 
     def __init__(self, module_name, addr, name, ord):
         #name is ignored and will be accessed using the property of IDANamedElt
         super(IDAImport, self).__init__(addr)
-        self.module_name = module_name
+        #module_name might be empty (ELF)
+        self.module = module_name
         self.ord = ord
-    
-    @classmethod
-    def new_import(cls, module_name, ea, name, ord):
-        cls.all[ea] = IDAImport(module_name, ea, name, ord)
-        return True
-        
-    #TODO: repr with ordinal and name
-    
+       
     def __IDA_repr__(self):
         descr = "ord={0}".format(self.ord)
         if self.name is not "":
-            descr = "name={0}".format(self.name)  
-        return "{0}({2}, module={1})".format(self.__class__.__name__, self.module_name, descr)
+            descr = "name={0}".format(self.name)
+        module = ", module={0}".format(self.module_name) if self.module_name else ""
+        return "{0}({1}{2})".format(self.__class__.__name__,descr, self.module_name)
         
-    
-    
+class IDAImportList(object):
+    # Really need import by name ?
+    def __init__(self):
+        self.imports_by_name = {}
+        self.imports_by_addr = {}
+        nimps = idaapi.get_import_module_qty()
+        for i in xrange(0, nimps):
+            name = idaapi.get_import_module_name(i)
+            idaapi.enum_import_names(i, functools.partial(self._add_import, name))
+            
+    def _add_import(self, module_name, ea, name, ord):
+        imp = IDAImport(module_name, ea, name, ord)
+        self.imports_by_name[name] = imp
+        self.imports_by_addr[ea] = imp
+        return True
+        
+        # On adr | name | addr and name ?
+    def __contains__(self, value):
+        if isinstance(value, basestring):
+            return value in self.imports_by_name
+        return int(value) in self.imports_by_addr
+       
+       
+    def __getitem__(self, value):
+        if isinstance(value, basestring):
+            return self.get_by_name(value)
+        return self.get_by_addr(value)
+        
+    def get_by_name(self, name):
+        return self.imports_by_name[name]
+     
+    def get_by_addr(self, addr):
+        return self.imports_by_addr[int(addr)]    
+        
+    @property
+    def all(self):
+        return list(self.imports_by_name.values())
+        
+    def __iter__(self):
+        return iter(self.all)
+        
+        
+
 # strongly inspired by ex_imports.py in IDAPython examples
-nimps = idaapi.get_import_module_qty()
-for i in xrange(0, nimps):
-    name = idaapi.get_import_module_name(i)
-    if not name:
-        print "Failed to get import module name for #%d" % i
-        continue
-    idaapi.enum_import_names(i, functools.partial(IDAImport.new_import, name))
+
 
 

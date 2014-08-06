@@ -1,4 +1,8 @@
 import idc
+import idautils
+
+late_import = ['xref']
+
 
 class IDAElt(object):
     def __init__(self, addr, *args):
@@ -7,8 +11,9 @@ class IDAElt(object):
     def get_addr(self):
         return self._addr
         
-    addr = property(get_addr, None, None, 'addr basic property')
-        
+    addr = property(get_addr, None, None, 'ea of the object')
+    
+    #property ?
     def goto(self):
         idc.Jump(self.addr)
         
@@ -20,9 +25,20 @@ class IDAElt(object):
         
     def __IDA_repr__(self):
         return self.__class__.__name__
-         
+    
+    @property    
+    def xfrom(self):
+        return [xref.Xref(x) for x in idautils.XrefsFrom(self.addr, False)]
         
+    @property   
+    def xto(self):
+        return [xref.Xref(x) for x in idautils.XrefsTo(self.addr, False)]
+        
+    #Create data xref ?
+         
+
 class IDANamedElt(IDAElt):
+    """ Real base class : looks like everything can have a name """
     def __init__(self, addr, *args):
         super(IDANamedElt, self).__init__(addr)
         
@@ -54,5 +70,5 @@ class IDASizedElt(IDAElt):
         return self.addr <= value < self.endADDR
         
         
-class IDANamedSizedElf(IDASizedElt, IDANamedElt):
+class IDANamedSizedElt(IDASizedElt, IDANamedElt):
     pass

@@ -1,7 +1,8 @@
-import elt
-import functions
-
 import idc
+
+late_import = ['elt', 'functions']
+
+
 
 # Testing code: not sure its really usefull..
 # If really usefull: rewrite this horrible code :D
@@ -20,11 +21,11 @@ class Xref(object):
             
     @property
     def frm(self):
-        return elt.IDAElt(self.xref.frm)
+        return elt.IDANamedElt(self.xref.frm)
 
     @property   
     def to(self):
-        return elt.IDAElt(self.xref.to)
+        return elt.IDANamedElt(self.xref.to)
             
     @property    
     def type(self):
@@ -62,7 +63,7 @@ class CodeXref(Xref):
         return (self.xref.type & 0x1f) in [idc.fl_JF, idc.fl_JN]
     
     @property
-    def is_normal(self): # name it 'is_flow' ?
+    def is_nflow(self): # name it 'is_flow' ?
         return (self.xref.type & 0x1f) ==  idc.fl_F 
         
 class DataXref(Xref):

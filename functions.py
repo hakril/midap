@@ -1,9 +1,14 @@
 import elt
-import xref
+
 
 import idaapi 
 import idautils
 import idc
+
+late_import = ['xref']
+
+#Other import are at the end:
+#import xref
 
 # reload(MIDAP); MIDAP.reload(); g = MIDAP.functions.MFunctions(); x = next(g) ; gg = iter(x) ; y = next(gg); y = next(gg)
 
@@ -15,7 +20,7 @@ import idc
 
 
 
-class IDAFunction(elt.IDANamedSizedElf):
+class IDAFunction(elt.IDANamedSizedElt):
 
     # Constructors
     @classmethod
@@ -42,7 +47,8 @@ class IDAFunction(elt.IDANamedSizedElf):
     @property
     def Blocks(self):
         return [IDABlock(basic_block) for basic_block in idaapi.FlowChart(idaapi.get_func(self.addr), flags=idaapi.FC_PREDS)]
-        
+     
+    # use FuncItems ?     
     @property             
     def Instrs(self):
         return [i for b in self.Blocks for i in b.Instrs]   
@@ -55,7 +61,7 @@ class IDAFunction(elt.IDANamedSizedElf):
         return idc.SetFunctionCmt(self.addr, comment, repeteable)
         
 
-class IDABlock(elt.IDANamedSizedElf):
+class IDABlock(elt.IDANamedSizedElt):
 
       #Constructors
     @classmethod
@@ -128,14 +134,39 @@ class IDAInstr(elt.IDASizedElt):
             return self._block
         return IDABlock.get_block(self.addr)
         
+
+    def _gen_code_xfrom(self, ignore_normal_flow):
+        for x in idautils.XrefsFrom(self.addr, ignore_normal_flow):
+            yield xref.CodeXref(x)
+        
     @property
-    def next(self, ignore_normal_flow = False):
-        return [xref.CodeXref(x) for x in idautils.XrefsFrom(self.addr, ignore_normal_flow) if x.iscode]
+    def next(self):
+        normal_next = [x for x in self._gen_code_xfrom(False) if x.is_code and x.is_nflow]
+        if len(normal_next) > 1:
+            raise ValueError("Instruction {0} has more that one normal flow xrefFrom".format(self))
+        if not normal_next:
+            return None
+        return normal_next[0]
+    
+    @property
+    def jump(self):
+        jump_next = [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
+        if len(jump_next) > 1:
+            raise ValueError("Instruction {0} has more that one jump flow xrefFrom".format(self))
+        if not jump_next:
+            return None
+        return jump_next[0]
+    
         
     #Todo : rename
     @property
     def data(self):
-        return [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
+        datas = [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
+        if len(datas) > 1:
+            raise ValueError("Instruction {0} has more that one data xrefFrom".format(self))
+        if not datas:
+            return None
+        return datas[0]
         
     def set_comment(self, comment, repeteable=True):
         if repeteable:
@@ -149,5 +180,5 @@ class IDAInstr(elt.IDASizedElt):
     def __IDA_repr__(self):
         return self.completeinstr
         
-      
+
                
