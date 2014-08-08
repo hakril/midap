@@ -1,6 +1,6 @@
 import idc
 
-late_import = ['elt', 'functions']
+late_import = ['elt', 'functions', 'data', 'idb']
 
 
 
@@ -52,6 +52,14 @@ class CodeXref(Xref):
 
     @property   
     def to(self):
+        # This is a code xref dans to is not code: import
+        # If someone found another case: tell me please !
+        dst = elt.IDAElt(self.xref.to)
+        if not dst.is_code:
+            if dst in idb.current.imports:
+                return functions.IDAImportInstr(self.xref.to, idb.current.imports[dst])
+            else:
+                return functions.IDAUndefInstr(self.xref.to)
         return functions.IDAInstr(self.xref.to)
 
     @property
@@ -73,6 +81,10 @@ class DataXref(Xref):
         super(DataXref, self).__init__(xref)
         if (self.xref.type & 0x1f) in (idc.dr_I,):
             print("DEBUG strange xref with dr_I")
+            
+    @property
+    def to(self):
+        return data.Data.new_data_by_type(self.xref.to)
                         
     @property
     def is_offset(self):

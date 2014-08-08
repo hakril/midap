@@ -25,10 +25,9 @@ class IDB(object):
             self.format = "ELF"
         else:
             raise ValueError("Unknow format <{0}>".format(filetype))
-        self.init = True
-        
         self.imports = ida_import.IDAImportList()
         self.exports = ida_import.IDAExportList()
+        self.init = True
         
         
         
@@ -47,3 +46,4 @@ class IDB(object):
         return functions.IDAFunction.get_all()
         
 
+current = IDB()

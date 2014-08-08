@@ -16,11 +16,20 @@ late_import = ['xref']
 
 
 # TODO : real name for constructor get_func and get_block
-# TODO : real name for MFunctions
 
 
 
-class IDAFunction(elt.IDANamedSizedElt):
+        
+           
+class IDACodeElt(elt.IDANamedSizedElt):
+    def nop(self):
+        self.patch("", True)
+        
+       # undefine ?
+       # reanalyse ?
+
+
+class IDAFunction(IDACodeElt):
 
     # Constructors
     @classmethod
@@ -59,9 +68,12 @@ class IDAFunction(elt.IDANamedSizedElt):
         
     def set_comment(self, comment, repeteable=True):
         return idc.SetFunctionCmt(self.addr, comment, repeteable)
+             
+    # Noping a complete fonction is not good for analyser
+    # Maybe leave the last instr ?
         
 
-class IDABlock(elt.IDANamedSizedElt):
+class IDABlock(IDACodeElt):
 
       #Constructors
     @classmethod
@@ -106,13 +118,52 @@ class IDABlock(elt.IDANamedSizedElt):
         except ValueError:
             return None 
 
-# TODO: use DecodeInstruction and insn_t ?
-class IDAInstr(elt.IDASizedElt):
+# TODO: use DecodeInstruction and insn_t ? <- yep, later for instr in instr
+
+
+        
+class IDAUndefInstr(elt.IDANamedElt):
+    def __init__(self, addr):
+        super(IDAUndefInstr, self).__init__(addr)       
+        self.size = 0
+        self.mnemo = ""
+        self.operands = []
+     
+    property_ret_none = property(lambda self: None)
+    # auto lookup for import ? IDAImportInstr ?
+    func = property_ret_none 
+    block = property_ret_none
+    next = property_ret_none
+    prev = property_ret_none
+    jump = property_ret_none
+    switch = property(lambda self: [])
+    data = property_ret_none
+    is_flow  = property(lambda self: False)
+    
+    
+    
+
+class IDAImportInstr(IDAUndefInstr):
+    def __init__(self, addr, imp):
+        super(IDAImportInstr, self).__init__(addr)
+        self.imp = imp
+
+    @property
+    def func(self):
+        return self.imp
+        
+
+# TODO : UndefInstr for call to undef place and call to exterieur (IAT)
+class IDAInstr(IDACodeElt):
     def __init__(self, addr, block=None):
         end_addr  = idc.NextHead(addr)
         super(IDAInstr, self).__init__(addr, end_addr)
-        self.mnemo = idc.GetMnem(addr)
+        
+        #Get Operend may disass unknow Bytes so put it before GetMnem (do we need to accept this behaviour ?)
         self.operands = [idc.GetOpnd(addr , i) for i in range(idaapi.UA_MAXOP) if idc.GetOpnd(addr , i) is not ""]
+        self.mnemo = idc.GetMnem(addr)
+        if self.mnemo == "":
+            raise ValueError("address <{0}> is not an instruction".format(hex(self.addr)))
         self.completeinstr = "{0} {1}".format(self.mnemo, ",".join(self.operands))
         self._block = block
         
@@ -148,14 +199,31 @@ class IDAInstr(elt.IDASizedElt):
             return None
         return normal_next[0]
     
+    @property    
+    def prev(self):
+        if not self.has_flow_prev:
+            return None
+        return IDAInstr(idc.PrevHead(self.addr))
+        
+    
+    def _get_instr_jumps(self):
+        return [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
+    
     @property
     def jump(self):
-        jump_next = [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
-        if len(jump_next) > 1:
-            raise ValueError("Instruction {0} has more that one jump flow xrefFrom".format(self))
-        if not jump_next:
+        jump_next = self._get_instr_jumps()
+        if len(jump_next) != 1:
+            # This is not a simple call / jmp
+            # THIS IS A SWITCH (see switch property)
             return None
         return jump_next[0]
+     
+    @property
+    def switch(self):
+        jump_next = self._get_instr_jumps()
+        if len(jump_next) <= 1:
+            return None
+        return jump_next
     
         
     #Todo : rename
@@ -168,17 +236,16 @@ class IDAInstr(elt.IDASizedElt):
             return None
         return datas[0]
         
-    def set_comment(self, comment, repeteable=True):
-        if repeteable:
-            idc.MakeRptCmt(self.addr, comment)
-        else:
-            return idc.MakeComm(self.addr, comment)
         
-    def get_comment(self, repeteable=True):
-        return idc.CommentEx(self.addr, repeteable)
+    @property
+    def is_flow(self):
+        return idc.isFlow(self.flags)
+        
+    has_flow_prev = is_flow
          
     def __IDA_repr__(self):
-        return self.completeinstr
+        return "{" + self.completeinstr + "}"
         
 
-               
+
+        

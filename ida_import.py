@@ -47,7 +47,7 @@ class IDAExportList(object):
            self.exports_by_name[name] = x 
            #Entry point : doesnt works for ELF..
            # TODO: find real entry point method
-           if b == c:
+           if  addr == ordinal:
                self.entry_point = x
         # No more default dict !
         self.exports_by_addr.default_factory = None
@@ -91,8 +91,8 @@ class IDAImport(elt.IDANamedElt):
         descr = "ord={0}".format(self.ord)
         if self.name is not "":
             descr = "name={0}".format(self.name)
-        module = ", module={0}".format(self.module_name) if self.module_name else ""
-        return "{0}({1}{2})".format(self.__class__.__name__,descr, self.module_name)
+        module = ", module={0}".format(self.module) if self.module else ""
+        return "({1}{2})".format(self.__class__.__name__,descr, module)
         
 class IDAImportList(object):
     # Really need import by name ?

@@ -8,8 +8,9 @@ import functions
 import xref
 import ida_import
 import idb
+import data
 
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb']
+all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data']
 
 
 def get_full_submodule_name(name):
@@ -21,12 +22,12 @@ all_submodules = [get_full_submodule_name(sub) for sub  in all_submodules_name]
 #TODO : You know what for problem with kernel32.dll
 
 #TODO data.py -> Bytes / Word / Dword / String / cstr
+# ?? : Undef Data et (Undef code : exist now) ?
 
 
 # helper : reload(MIDAP); MIDAP.reload(); g = MIDAP.functions.MFunctions(); f = MIDAP.fhere(); i = MIDAP.ihere()
 
 # TODO: structures ?
-# Entry point: list(Entries())
 
 
 #TODO : CLEAR ON RELOAD
@@ -65,10 +66,14 @@ def bhere():
 def fhere():
     "Typed here(): return current Function"
     return functions.IDAFunction.get_func(idc.here())
+    
+def dhere():
+    "Typed here(): return current Data"
+    return data.Data.new_data_by_type(idc.here())
 
 
      
 
 fixup_late_import()
 
-self = idb.IDB()
+self = idb.current
