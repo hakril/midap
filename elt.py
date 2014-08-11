@@ -25,7 +25,6 @@ class IDAElt(object):
         return self.addr
         
     def __repr__(self):
-    
         return "<{cls} {ida_repr} <at {addr}>>".format(
                 cls=self.__class__.__name__,
                 ida_repr=self.__IDA_repr__(),
@@ -93,7 +92,7 @@ class IDAElt(object):
     def has_value(self):
         return idc.hasValue(self.flags) 
         
-    # comments: property ? for normal and repeteable ?   
+    # comments: properties ? for normal and repeteable ?
     def set_comment(self, comment, repeteable=True):
         if repeteable:
             idc.MakeRptCmt(self.addr, comment)
@@ -137,9 +136,11 @@ class IDANamedElt(IDAElt):
 
         
 class IDASizedElt(IDAElt):
-    # always use NextHead to get endaddr ?
-    def __init__(self, addr, endaddr, nb_elt=None):
+    # always use NextHead to get endaddr ? or ItemEnd ? or ItemSize ?
+    def __init__(self, addr, endaddr=None, nb_elt=None):
         """ endaddr: first addr not part of the element """
+        if endaddr is None:
+            endaddr = idc.ItemEnd(addr)
         super(IDASizedElt, self).__init__(addr, endaddr, nb_elt)
         self.endADDR = endaddr
         self.size = endaddr - addr
@@ -156,7 +157,9 @@ class IDASizedElt(IDAElt):
         if self.size < len(patch):
             raise ValueError("Patch if too big for {0}".format(self)) 
         if self.size != len(patch) and not fill_nop:
-            raise Value("Patch is too small for {0} and no fill_patch (better idea than raise ?)".format(self))
+            pass
+            # raise Value("Patch is too small for {0} and no fill_patch (better idea than raise ?)".format(self))
+            # Not patching other bytes seems cool ?
         
         full_patch = list(patch) + [nop] * (self.size - len(patch))
         for addr, byte in zip(range(self.addr, self.addr + self.size), full_patch):

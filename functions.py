@@ -18,7 +18,7 @@ late_import = ['xref']
 # TODO : real name for constructor get_func and get_block
 
 
-
+# TODO: revoir logique Blocks /  Instr (UPX example)
         
            
 class IDACodeElt(elt.IDANamedSizedElt):
@@ -123,6 +123,11 @@ class IDABlock(IDACodeElt):
 
         
 class IDAUndefInstr(elt.IDANamedElt):
+    """ Undefined instruction:
+        Accessible by code flow but code cannot be know with static informations.
+            - Can be rewriting code, unpacking, ...
+    """
+        
     def __init__(self, addr):
         super(IDAUndefInstr, self).__init__(addr)       
         self.size = 0
@@ -141,9 +146,12 @@ class IDAUndefInstr(elt.IDANamedElt):
     is_flow  = property(lambda self: False)
     
     
-    
-
 class IDAImportInstr(IDAUndefInstr):
+    """
+        Instruction in imported function:
+        This instruction is not part of the current module.
+        Example: jump into kernel32 import.
+    """
     def __init__(self, addr, imp):
         super(IDAImportInstr, self).__init__(addr)
         self.imp = imp
@@ -167,10 +175,10 @@ class IDAInstr(IDACodeElt):
         self.completeinstr = "{0} {1}".format(self.mnemo, ",".join(self.operands))
         self._block = block
         
-    #all getter
+    #Any better way to do this ?
     @classmethod
     def get_all(cls):
-        return [i for b in IDABlock.get_all() for i in b.Instrs]
+        return [IDAInstr(ea) for ea in Heads() if elt.IDAElt(ea).is_code]
         
     @property        
     def func(self):
@@ -204,8 +212,7 @@ class IDAInstr(IDACodeElt):
         if not self.has_flow_prev:
             return None
         return IDAInstr(idc.PrevHead(self.addr))
-        
-    
+         
     def _get_instr_jumps(self):
         return [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
     

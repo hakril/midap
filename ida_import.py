@@ -52,13 +52,11 @@ class IDAExportList(object):
         # No more default dict !
         self.exports_by_addr.default_factory = None
      
-    # On adr | name | addr and name ?
     def __contains__(self, value):
         if isinstance(value, basestring):
-            return value in self.export_by_name
+            return value in self.exports_by_name
         return int(value) in self.exports_by_addr
-       
-       
+        
     def __getitem__(self, value):
         if isinstance(value, basestring):
             return self.get_by_name(value)
@@ -97,6 +95,8 @@ class IDAImport(elt.IDANamedElt):
 class IDAImportList(object):
     # Really need import by name ?
     def __init__(self):
+        
+        #strongly inspired by ex_imports.py in IDAPython examples
         self.imports_by_name = {}
         self.imports_by_addr = {}
         nimps = idaapi.get_import_module_qty()
@@ -110,13 +110,11 @@ class IDAImportList(object):
         self.imports_by_addr[ea] = imp
         return True
         
-        # On adr | name | addr and name ?
     def __contains__(self, value):
         if isinstance(value, basestring):
             return value in self.imports_by_name
         return int(value) in self.imports_by_addr
-       
-       
+              
     def __getitem__(self, value):
         if isinstance(value, basestring):
             return self.get_by_name(value)
@@ -137,7 +135,6 @@ class IDAImportList(object):
         
         
 
-# strongly inspired by ex_imports.py in IDAPython examples
 
 
 

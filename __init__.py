@@ -70,6 +70,10 @@ def fhere():
 def dhere():
     "Typed here(): return current Data"
     return data.Data.new_data_by_type(idc.here())
+    
+def ehere():
+    "low typed here(): return current IDAElt for badic operations"
+    return data.elt.IDAElt(idc.here())
 
 
      
