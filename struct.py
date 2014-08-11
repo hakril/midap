@@ -50,8 +50,8 @@ class StructDef(DataDefinition):
     @property # autoflat structs ? return StructDef when struct ?
     def members(self):
         # Try for returning StructDef in members // better ideas ? 
-        return [StructMemberDef(self, offset) for offset in self._get_members_offset()]
-   
+        return [MemberDef(self, offset) for offset in self._get_members_offset()]
+  
     @property
     def flat_members(self):
         res = []
@@ -78,41 +78,56 @@ class StructDef(DataDefinition):
         for i in range(self.nb_member):
             yield off
             off = idc.GetStrucNextOff(self.sid, off)
-"""            
+            
+                       
 class SubStrucDef(StructDef):
-    def __init__(self, sid, parents_structs):
+    """ offset : global offset of the sub struct into root struct """
+    def __init__(self, sid, parents_structs, base_offset):
         super(SubStrucDef, self).__init__(sid)
         self.parents_structs = parents_structs
+        self.offset = base_offset
         
     def __IDA_repr__(self):
-        return ".".join([s.name for s in self.parents_structs] + [self.name])
-"""
+        return ".".join([s.name for s in self.parents_structs]) + " {0}".format(self.name)
+      
+    @property # autoflat structs ? return StructDef when struct ?
+    def members(self):
+        # Try for returning StructDef in members // better ideas ? 
+        return [SubMemberDef(self, offset) for offset in self._get_members_offset()]
+
+        
    
 
    
-class StructMemberDef(DataDefinition):
-    def __init__(self, struct, offset):
+class MemberDef(DataDefinition):
+    def __init__(self, struct, struct_offset):
         # member id : no idea of its usage ...
-        self.mid = idc.GetMemberId(struct.sid, offset)
-        self.struct = struct
-        self.offset = offset
-        super(StructMemberDef, self).__init__(self.mid)
-        
+        self.mid = idc.GetMemberId(struct.sid, struct_offset)
+        self.parent_struct = struct
+        self.struct_offset = struct_offset
+        self.offset = struct_offset
+        super(MemberDef, self).__init__(self.mid)
+       
     def get_name(self):
-        return idc.GetMemberName(self.struct.sid, self.offset)
+        return idc.GetMemberName(self.parent_struct.sid, self.struct_offset)
         
     def set_name(self, value):
-        return idc.SetMemberName(self.struct.sid, self.offset, value)
+        return idc.SetMemberName(self.parent_struct.sid, self.struct_offset, value)
         
     name = property(get_name, set_name, None, "Name of the member")
+    
+    @property
+    def full_name(self):
+        return ".".join([self.parent_struct.name, self.name])
+    
      
     @property     
     def size(self):
-        return idc.GetMemberSize(self.struct.sid, self.offset)
+        return idc.GetMemberSize(self.parent_struct.sid, self.struct_offset)
         
     @property
     def flags(self):
-        return idc.GetMemberFlag(self.struct.sid, self.offset)
+        return idc.GetMemberFlag(self.parent_struct.sid, self.struct_offset)
         
     @property
     def definition(self):
@@ -121,26 +136,34 @@ class StructMemberDef(DataDefinition):
         xfrom = self.xfrom
         if len(xfrom) != 1:
             raise ValueError("Unexpected {0} xrefsfrom in {1}".format(len(xfrom), self)) 
-        return StructDef(xfrom[0].to.addr)
+        return SubStrucDef(xfrom[0].to.addr, [self.parent_struct, self] , self.struct_offset)
         
     def set_comment(self, value, repeteable=True):
-        return idc.SetMemberComment(self.struct.sid, self.offset, value, repeteable)
+        return idc.SetMemberComment(self.parent_struct.sid, self.struct_offset, value, repeteable)
         
     def get_comment(self, repeteable=True):
-        return idc.GetMemberComment(self.struct.sid, self.offset, repeteable)
+        return idc.GetMemberComment(self.parent_struct.sid, self.struct_offset, repeteable)
         
     def __IDA_repr__(self):
-        return ".".join([self.struct.name, self.name])
+        return self.full_name
         
+   
 
-        
-        
-#TODO: StructData -> mapping of a variable StructDef on data
-# is there a better way than manually by 'parsing' the StructDef.flat_members
-  
-# generating struct memberdata based on Data subclasses
+class SubMemberDef(MemberDef):
+    """ offset : offset in the root struct
+        struct_offset = offset in sur SubStructDef
+    """
+    
+    def __init__(self, parent_struct, struct_offset):
+        super(SubMemberDef, self).__init__(parent_struct, struct_offset)
+        self.offset = parent_struct.offset + struct_offset
+     
+    @property
+    def full_name(self):
+        return ".".join([s.name for s in self.parent_struct.parents_structs]) + ".{0}".format(self.name)
+       
+
  
-  
 class StructData(data.Data):
     def __init__(self, addr):
         idaelt = elt.IDAElt(addr)
@@ -152,16 +175,16 @@ class StructData(data.Data):
             raise ValueError("multiple xref to struct definition for addr {0} (WHAT DO I DO ?)".format(hex(addr)))
         self.struct = StructDef(structs[0])
         super(StructData, self).__init__(addr, addr + self.struct.size)
-        
-    
+       
+  
     def members(self):
-        for member in self.struct.members:
+        return [(member, self.new_data_by_member_type(member))for member in self.struct.flat_members]
+            
             
     
-    def new_data_by_member_type(cls, addr):
-        data = Data(addr)
-        for subcls in cls.__subclasses__():
-            if subcls.match(data):
-                return subcls(addr)
-        return UnknowData(addr)
-            
+    def new_data_by_member_type(self, member): 
+        for subcls in data.Data.__subclasses__():
+            if subcls.match(member):
+                return subcls(self.addr + member.offset)
+        return UnknowData(self.addr + member.offset)
+         
