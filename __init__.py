@@ -9,8 +9,9 @@ import xref
 import ida_import
 import idb
 import data
+import struct
 
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data']
+all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct']
 
 
 def get_full_submodule_name(name):

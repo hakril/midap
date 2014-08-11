@@ -137,6 +137,7 @@ class IDANamedElt(IDAElt):
         
 class IDASizedElt(IDAElt):
     # always use NextHead to get endaddr ? or ItemEnd ? or ItemSize ?
+    # endAddr should be private ? think so
     def __init__(self, addr, endaddr=None, nb_elt=None):
         """ endaddr: first addr not part of the element """
         if endaddr is None:

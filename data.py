@@ -2,6 +2,8 @@ import elt
 
 import idc
 
+late_import = ['struct']
+
 # why not: automatic subclassing :)
 class Data(elt.IDANamedSizedElt):
 
@@ -38,6 +40,8 @@ class Data(elt.IDANamedSizedElt):
 
     def __init__(self, addr, endaddr=None):
         super(Data, self).__init__(addr, endaddr)
+    
+    #Should all this be in IDAelt ?
     
     @property
     def is_byte(self):
@@ -111,7 +115,6 @@ class Data(elt.IDANamedSizedElt):
  
 class UnknowData(Data):
     size = 0
-    
         
 class ByteData(Data):
     size = 1
@@ -137,7 +140,7 @@ class DwordData(Data):
     match = staticmethod(Data.is_dword.fget)
     
     
-class DwordData(Data):
+class QwordData(Data):
     size = 8
     _get_value_func = staticmethod(idc.Qword)
     match = staticmethod(Data.is_qword.fget)
@@ -180,12 +183,9 @@ class ASCIIData(Data):
         return '{0} "{1}"'.format(self.type_to_str(self.type), s)
         
     def __getitem__(self, index):
-        bytes = self.bytes
-        b = bytes[index]
+        b = self.bytes[index]
         return ASCIIByteData(b.addr)
         
-    
-    
-    
-        
+ 
+
     
