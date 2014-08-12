@@ -20,12 +20,16 @@ class Data(elt.IDANamedSizedElt):
             The value of the Data object.
             DataByte.value = 0x42 will patch the byte at DataByte.addr
         """
+        if self._get_value_func is None:
+            raise ValueError("Cannot access value of {0}".format(self))
         return self._get_value_func(self.addr)
         
     def set_value(self, value, litte_endian=True):
         # TODO: ask endianness to IDB
         initial_value = value
         bytes = []
+        if self._get_value_func is None:
+            raise ValueError("Cannot access value of {0}".format(self))
         for i in range(self.size):
             bytes.append(value & 255)
             value = value >> 8
@@ -39,6 +43,8 @@ class Data(elt.IDANamedSizedElt):
         
 
     def __init__(self, addr, endaddr=None):
+        if endaddr is None:
+            endaddr = addr + self.__class__.size
         super(Data, self).__init__(addr, endaddr)
     
     #Should all this be in IDAelt ?
@@ -93,8 +99,8 @@ class Data(elt.IDANamedSizedElt):
          
     def __IDA_repr__(self):
         if self._get_value_func is None:
-            return ""
-        return hex(self.value)
+            return self.name
+        return self.name + " " + hex(self.value)
         
     @classmethod
     def new_data_by_size(cls, addr, size):

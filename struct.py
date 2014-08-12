@@ -3,8 +3,7 @@ import data
 
 import idc
 
-# RETHINKS THIS SHIT
-# global idea is good, but need to put nested struct inside
+# Definitions
 
 class DataDefinition(data.Data):
     """ Abstract data for definition:
@@ -18,7 +17,6 @@ class DataDefinition(data.Data):
     __IDA_repr__ = elt.IDANamedElt.__IDA_repr__
 
     
-    
 class StructDef(DataDefinition):
 
     @staticmethod
@@ -28,6 +26,7 @@ class StructDef(DataDefinition):
     def __init__(self, sid):
         # Get sid by xrefsfrom struct variables
         self.sid = sid
+        self.root = self
         # Make sid like the addr of StructDef ?
         super(StructDef, self).__init__(sid)
      
@@ -86,6 +85,7 @@ class SubStrucDef(StructDef):
         super(SubStrucDef, self).__init__(sid)
         self.parents_structs = parents_structs
         self.offset = base_offset
+        self.root = parents_structs[-1].root
         
     def __IDA_repr__(self):
         return ".".join([s.name for s in self.parents_structs]) + " {0}".format(self.name)
@@ -103,31 +103,35 @@ class MemberDef(DataDefinition):
     def __init__(self, struct, struct_offset):
         # member id : no idea of its usage ...
         self.mid = idc.GetMemberId(struct.sid, struct_offset)
-        self.parent_struct = struct
+        self.parent = struct
         self.struct_offset = struct_offset
         self.offset = struct_offset
+        self.root = struct.root
         super(MemberDef, self).__init__(self.mid)
        
     def get_name(self):
-        return idc.GetMemberName(self.parent_struct.sid, self.struct_offset)
+        return idc.GetMemberName(self.parent.sid, self.struct_offset)
         
     def set_name(self, value):
-        return idc.SetMemberName(self.parent_struct.sid, self.struct_offset, value)
+        return idc.SetMemberName(self.parent.sid, self.struct_offset, value)
         
     name = property(get_name, set_name, None, "Name of the member")
     
     @property
     def full_name(self):
-        return ".".join([self.parent_struct.name, self.name])
-    
+        return ".".join([self.parent.name, self.name])
+   
+    @property
+    def path_name(self):
+        return self.name
      
     @property     
     def size(self):
-        return idc.GetMemberSize(self.parent_struct.sid, self.struct_offset)
+        return idc.GetMemberSize(self.parent.sid, self.struct_offset)
         
     @property
     def flags(self):
-        return idc.GetMemberFlag(self.parent_struct.sid, self.struct_offset)
+        return idc.GetMemberFlag(self.parent.sid, self.struct_offset)
         
     @property
     def definition(self):
@@ -136,13 +140,13 @@ class MemberDef(DataDefinition):
         xfrom = self.xfrom
         if len(xfrom) != 1:
             raise ValueError("Unexpected {0} xrefsfrom in {1}".format(len(xfrom), self)) 
-        return SubStrucDef(xfrom[0].to.addr, [self.parent_struct, self] , self.struct_offset)
+        return SubStrucDef(xfrom[0].to.addr, [self.parent, self] , self.struct_offset)
         
     def set_comment(self, value, repeteable=True):
-        return idc.SetMemberComment(self.parent_struct.sid, self.struct_offset, value, repeteable)
+        return idc.SetMemberComment(self.parent.sid, self.struct_offset, value, repeteable)
         
     def get_comment(self, repeteable=True):
-        return idc.GetMemberComment(self.parent_struct.sid, self.struct_offset, repeteable)
+        return idc.GetMemberComment(self.parent.sid, self.struct_offset, repeteable)
         
     def __IDA_repr__(self):
         return self.full_name
@@ -160,10 +164,15 @@ class SubMemberDef(MemberDef):
      
     @property
     def full_name(self):
-        return ".".join([s.name for s in self.parent_struct.parents_structs]) + ".{0}".format(self.name)
+        return ".".join([s.name for s in self.parent.parents_structs]) + ".{0}".format(self.name)
+     
+    @property
+    def path_name(self):
+        return ".".join([s.name for s in self.parent.parents_structs[1:]]) + ".{0}".format(self.name)
        
 
- 
+# Struct data
+       
 class StructData(data.Data):
     def __init__(self, addr):
         idaelt = elt.IDAElt(addr)
@@ -173,18 +182,38 @@ class StructData(data.Data):
             raise ValueError("Coul not find xref to struct definition for addr {0}".format(hex(addr)))
         if len(structs) > 1:
             raise ValueError("multiple xref to struct definition for addr {0} (WHAT DO I DO ?)".format(hex(addr)))
-        self.struct = StructDef(structs[0])
-        super(StructData, self).__init__(addr, addr + self.struct.size)
+        self.definition = StructDef(structs[0])
+        super(StructData, self).__init__(addr, addr + self.definition.size)
        
-  
+    @property
     def members(self):
-        return [(member, self.new_data_by_member_type(member))for member in self.struct.flat_members]
-            
-            
-    
+        return [self.new_data_by_member_type(member) for member in self.definition.flat_members]
+                         
     def new_data_by_member_type(self, member): 
         for subcls in data.Data.__subclasses__():
             if subcls.match(member):
-                return subcls(self.addr + member.offset)
-        return UnknowData(self.addr + member.offset)
+                return self.new_data_member(subcls)(self.addr + member.offset, member)
+        return self.new_data_member(UnknowData)(self.addr + member.offset, member)
+        
+    def new_data_member(self_struct, cls):
+        class MemberData(cls):
+            def __init__(self, addr, member):
+                super(MemberData, self).__init__(addr)
+                self.definition = member
+                self.parent = self_struct
+
+            @property    
+            def name(self):
+                """ name of a MemberData is name of the struct + path_name of the member definition """
+                return self.parent.name + "." + self.definition.path_name
+                
+            def __IDA_repr__(self):
+                return self.name  + " " + super(MemberData, self).__IDA_repr__()
+            
+        MemberData.__name__ = "Member" + cls.__name__
+        return MemberData
+        
+
+            
+    
          
