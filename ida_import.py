@@ -9,8 +9,6 @@ import elt
 late_import = ['functions']
 
 
-#WIP: Find good export / import API
-
 # TODO : merge both code
        
 
@@ -49,7 +47,7 @@ class IDAExportList(object):
            # TODO: find real entry point method
            if  addr == ordinal:
                self.entry_point = x
-        # No more default dict !
+        # disable default dict at this point to prevent error
         self.exports_by_addr.default_factory = None
      
     def __contains__(self, value):
@@ -69,11 +67,11 @@ class IDAExportList(object):
         return self.exports_by_addr[int(addr)]    
         
     @property
-    def all(self):
+    def get_all(self):
         return list(self.exports_by_name.values())
         
     def __iter__(self):
-        return iter(self.all)
+        return iter(self.get_all)
         
 
 class IDAImport(elt.IDANamedElt):
@@ -127,11 +125,11 @@ class IDAImportList(object):
         return self.imports_by_addr[int(addr)]    
         
     @property
-    def all(self):
+    def get_all(self):
         return list(self.imports_by_name.values())
         
     def __iter__(self):
-        return iter(self.all)
+        return iter(self.get_all)
         
         
 

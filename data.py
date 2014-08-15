@@ -1,14 +1,19 @@
 import elt
 
 import idc
+import idautils
 
 late_import = ['struct']
+
+# TODO : handle array ? // See if data size match data type ? Data.is_dword and Data.size = 400 -> 100 dword array ?
+
+# TODO : data with no Value (has_value is False)
 
 # why not: automatic subclassing :)
 class Data(elt.IDANamedSizedElt):
 
     # size == 0 doesn't make sens: need automatic subclassing :D
-    size = 0
+    size = -1
     match = staticmethod(lambda *args : False)
     # addr -> bool
     # staticmethod
@@ -22,6 +27,8 @@ class Data(elt.IDANamedSizedElt):
         """
         if self._get_value_func is None:
             raise ValueError("Cannot access value of {0}".format(self))
+        if not self.has_value:
+            return None
         return self._get_value_func(self.addr)
         
     def set_value(self, value, litte_endian=True):
@@ -42,8 +49,12 @@ class Data(elt.IDANamedSizedElt):
     value = property(value, set_value, None)
         
 
+    @classmethod
+    def get_all(cls):
+        return [Data.new_data_by_type(ea) for ea in idautils.Heads() if elt.IDAElt(ea).is_data]    
+        
     def __init__(self, addr, endaddr=None):
-        if endaddr is None:
+        if endaddr is None and self.__class__.size != -1:
             endaddr = addr + self.__class__.size
         super(Data, self).__init__(addr, endaddr)
     
@@ -100,6 +111,8 @@ class Data(elt.IDANamedSizedElt):
     def __IDA_repr__(self):
         if self._get_value_func is None:
             return self.name
+        if not self.has_value:
+            return self.name + " " + "{no_value}"
         return self.name + " " + hex(self.value)
         
     @classmethod
@@ -120,7 +133,7 @@ class Data(elt.IDANamedSizedElt):
         
  
 class UnknowData(Data):
-    size = 0
+    pass
         
 class ByteData(Data):
     size = 1
@@ -134,6 +147,10 @@ class ASCIIByteData(ByteData):
                
     def __init__(self, addr):
         super(ASCIIByteData, self).__init__(addr, addr + 1)
+     
+    @property
+    def str(self):
+        return chr(self.value)
     
 class WordData(Data):
     size = 2
@@ -150,8 +167,9 @@ class QwordData(Data):
     size = 8
     _get_value_func = staticmethod(idc.Qword)
     match = staticmethod(Data.is_qword.fget)
-    
-class ASCIIData(Data):
+  
+# TODO : being able to create String from sub string  
+class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     """ 
         An IDA string:
             ASCIIData.size = size of the item encoded.
@@ -159,12 +177,18 @@ class ASCIIData(Data):
     """
     match = staticmethod(Data.is_ascii.fget)
     
+    
     # Find better string definition
     type_value = ["ASCSTR_C", "ASCSTR_PASCAL", "ASCSTR_LEN2", "ASCSTR_UNICODE", "ASCSTR_LEN4", "ASCSTR_ULEN2", "ASCSTR_ULEN4"]
     
-    def __init__(self, addr): 
-        # Not an error: we need to bypass the 'general' Data constructor
+    def __init__(self, addr, auto_str=False): 
+        # Not an error: we need to bypass the 'general' Data constructor | is that still the case ? with new Data constructor
         super(Data, self).__init__(addr)
+        if self.type == -1: # Is not a string yet
+            if auto_str or Data(addr).is_ascii: # if is_ascii MakeString will juste add a name.
+                idc.MakeStr(addr, idc.BADADDR)
+            else:
+                raise ValueError("no string at addr {0}, use {0}(addr, auto_str=True) for automatic conversion".format(addr, self.__class__.__name__))
         
     @property
     def str(self):
@@ -192,6 +216,46 @@ class ASCIIData(Data):
         b = self.bytes[index]
         return ASCIIByteData(b.addr)
         
+    def __len__(self):
+        return len(self.bytes)
+        
+    @property    
+    def bytes(self):
+        return [ASCIIByteData(addr) for addr in range(self.addr, self.addr + self.size)]
  
+    #TODO: is_cstr | is_unicode | is_pascal | is_len2 | is_len4 | is_ulen2 | is_ulen4
+    
+    @property
+    def is_cstr(self):
+        return self.type == idc.ASCSTR_C
+        
+    @property
+    def is_unicode(self):
+        return self.type == idc.ASCSTR_UNICODE
+           
+    @property
+    def is_pascal(self):
+        return self.type == idc.ASCSTR_PASCAL
+        
+    @property
+    def is_len2(self):
+        return self.type == idc.ASCSTR_LEN2
+
+    @property
+    def is_len4(self):
+        return self.type == idc.ASCSTR_LEN4
+        
+    @property
+    def is_ulen2(self):
+        return self.type == idc.ASCSTR_ULEN2
+        
+    @property
+    def is_ulen4(self):
+        return self.type == idc.ASCSTR_ULEN4
+        
+
+    
+    
+    
 
     

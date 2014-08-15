@@ -1,7 +1,10 @@
 import idaapi 
+import idautils
+
 import ida_import
- 
-late_import = ['functions']
+
+
+late_import = ['functions', 'data']
  
  #Put this somewhere else
 class IDB(object):
@@ -29,9 +32,7 @@ class IDB(object):
         self.exports = ida_import.IDAExportList()
         self.init = True
         
-        
-        
-        
+             
     @property
     def is_pe(self):
         return self.format == "PE"
@@ -45,5 +46,19 @@ class IDB(object):
         "Return all functions in IDB"
         return functions.IDAFunction.get_all()
         
-
-current = IDB()
+    @property
+    def Instrs(self):
+        return functions.IDAInstr.get_all()
+           
+    def Data(self):
+        return data.Data.get_all()
+        
+    # A filter really ? or user use its own list comprehension ? like for everything else ?
+    def Strings(self, filter=None, display_only_existing_strings=True):
+        strs = idautils.Strings()
+        #Idea is: usef will use filter to discard strings 
+        strs.setup(0xffffffff, minlen=3, display_only_existing_strings=display_only_existing_strings)
+        data_ascii_generator = (data.ASCIIData(s.ea) for s in strs)
+        if filter is not None:
+            return [s for s in data_ascii_generator if filter(s)]
+        return list(data_ascii_generator)

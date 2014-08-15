@@ -7,13 +7,6 @@ import idc
 
 late_import = ['xref']
 
-#Other import are at the end:
-#import xref
-
-# reload(MIDAP); MIDAP.reload(); g = MIDAP.functions.MFunctions(); x = next(g) ; gg = iter(x) ; y = next(gg); y = next(gg)
-
-# reload(MIDAP); MIDAP.reload(); g = MIDAP.functions.MFunctions(); f = MIDAP.fhere(); i = MIDAP.ihere()
-
 
 # TODO : real name for constructor get_func and get_block
 
@@ -22,14 +15,45 @@ late_import = ['xref']
         
            
 class IDACodeElt(elt.IDANamedSizedElt):
-    def nop(self):
-        self.patch("", True)
+    """ 
+        A code element:
+        It may be defined or not
+    """
+    # size = 0 ?
+    
+    @property
+    def is_defined(self):
+        return False
+     
+    def _gen_code_xto(self, ignore_normal_flow):
+        for x in idautils.XrefsTo(self.addr, ignore_normal_flow):
+            yield xref.CodeXref(x) 
+    
+    def _get_instr_rjumps(self): # might be remove : redundancy
+        return [x for x in self._gen_code_xto(True) if x.is_code and not x.is_nflow]
+    
+    # Yes : code can jump to undefined code (packer/ import / etc)
+    @property
+    def rjump(self): # find a better name ?
+        """ reverse jump : all instr that jump on the first instruction of this code element (call included) """
+        return self._get_instr_rjumps()
         
        # undefine ?
        # reanalyse ?
+       
+class IDADefinedCodeElt(IDACodeElt):
+    """
+        Abstract class just to have a common denominator between
+            - Defined Instr
+            - Blocks
+            - Functions
+    """
+    
+    @property
+    def is_defined(self):
+        return True
 
-
-class IDAFunction(IDACodeElt):
+class IDAFunction(IDADefinedCodeElt):
 
     # Constructors
     @classmethod
@@ -71,9 +95,12 @@ class IDAFunction(IDACodeElt):
              
     # Noping a complete fonction is not good for analyser
     # Maybe leave the last instr ?
+    
+   
+    # TODO: prev -> instructions that call a function :)
         
 
-class IDABlock(IDACodeElt):
+class IDABlock(IDADefinedCodeElt):
 
       #Constructors
     @classmethod
@@ -110,7 +137,7 @@ class IDABlock(IDACodeElt):
     def is_ret(self):
         return idaapi.is_ret_block(self.basic_block.type)
     
-    # Duplicate cod from IDAInstr, missing one abstraction ? (IDAFuncElt ? for member potentially in a function ?)
+    # Duplicate code from IDAInstr, missing one abstraction ? (IDAFuncElt ? for member potentially in a function ?)
     @property
     def func(self):
         try:
@@ -122,15 +149,14 @@ class IDABlock(IDACodeElt):
 
 
         
-class IDAUndefInstr(elt.IDANamedElt):
+class IDAUndefInstr(IDACodeElt):
     """ Undefined instruction:
         Accessible by code flow but code cannot be know with static informations.
             - Can be rewriting code, unpacking, ...
     """
         
     def __init__(self, addr):
-        super(IDAUndefInstr, self).__init__(addr)       
-        self.size = 0
+        super(IDAUndefInstr, self).__init__(addr, addr) # Size = 0     
         self.mnemo = ""
         self.operands = []
      
@@ -160,12 +186,20 @@ class IDAImportInstr(IDAUndefInstr):
     def func(self):
         return self.imp
         
+    @classmethod
+    def from_import(cls, imp):
+        return cls(imp.addr, imp)
+        
+    # revoir ca: ImportInstr and UndefInstr need rjump :)
+        
 
 # TODO : UndefInstr for call to undef place and call to exterieur (IAT)
-class IDAInstr(IDACodeElt):
+class IDAInstr(IDADefinedCodeElt):
     def __init__(self, addr, block=None):
         end_addr  = idc.NextHead(addr)
         super(IDAInstr, self).__init__(addr, end_addr)
+        
+        # Check (is_code | GetMnem) ? to prevent implicit disassembly ?  
         
         #Get Operend may disass unknow Bytes so put it before GetMnem (do we need to accept this behaviour ?)
         self.operands = [idc.GetOpnd(addr , i) for i in range(idaapi.UA_MAXOP) if idc.GetOpnd(addr , i) is not ""]
@@ -178,7 +212,7 @@ class IDAInstr(IDACodeElt):
     #Any better way to do this ?
     @classmethod
     def get_all(cls):
-        return [IDAInstr(ea) for ea in Heads() if elt.IDAElt(ea).is_code]
+        return [IDAInstr(ea) for ea in idautils.Heads() if elt.IDAElt(ea).is_code]
         
     @property        
     def func(self):
@@ -197,6 +231,7 @@ class IDAInstr(IDACodeElt):
     def _gen_code_xfrom(self, ignore_normal_flow):
         for x in idautils.XrefsFrom(self.addr, ignore_normal_flow):
             yield xref.CodeXref(x)
+            
         
     @property
     def next(self):
@@ -213,8 +248,10 @@ class IDAInstr(IDACodeElt):
             return None
         return IDAInstr(idc.PrevHead(self.addr))
          
-    def _get_instr_jumps(self):
+    def _get_instr_jumps(self): # might be remove : redundancy
         return [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
+        
+
     
     @property
     def jump(self):

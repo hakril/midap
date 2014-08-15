@@ -96,9 +96,7 @@ class SubStrucDef(StructDef):
         return [SubMemberDef(self, offset) for offset in self._get_members_offset()]
 
         
-   
-
-   
+      
 class MemberDef(DataDefinition):
     def __init__(self, struct, struct_offset):
         # member id : no idea of its usage ...
@@ -174,6 +172,8 @@ class SubMemberDef(MemberDef):
 # Struct data
        
 class StructData(data.Data):
+    match = staticmethod(data.Data.is_struct.fget)
+
     def __init__(self, addr):
         idaelt = elt.IDAElt(addr)
         struct_ids = StructDef.all_ids()

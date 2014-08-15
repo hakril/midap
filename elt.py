@@ -20,6 +20,8 @@ class IDAElt(object):
     #property ?
     def goto(self):
         idc.Jump(self.addr)
+        # chaining stuff
+        return self
         
     def __int__(self):
         return self.addr
@@ -111,6 +113,7 @@ class IDANamedElt(IDAElt):
     def get_name(self):
         return idc.Name(self.addr)
         
+    # if already named auto-add prefix like _0 ? (seems good for automation)    
     def set_name(self, name):
         return idc.MakeName(self.addr, name)
        
@@ -138,16 +141,13 @@ class IDANamedElt(IDAElt):
 class IDASizedElt(IDAElt):
     # always use NextHead to get endaddr ? or ItemEnd ? or ItemSize ?
     # endAddr should be private ? think so
-    def __init__(self, addr, endaddr=None, nb_elt=None):
+    def __init__(self, addr, endaddr=None):
         """ endaddr: first addr not part of the element """
         if endaddr is None:
             endaddr = idc.ItemEnd(addr)
-        super(IDASizedElt, self).__init__(addr, endaddr, nb_elt)
+        super(IDASizedElt, self).__init__(addr)
         self.endADDR = endaddr
         self.size = endaddr - addr
-        if nb_elt is None:
-            nb_elt = self.size
-        self.nb_elt = nb_elt
         
     def __contains__(self, value):
         return self.addr <= value < self.endADDR

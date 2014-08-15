@@ -22,22 +22,14 @@ all_submodules = [get_full_submodule_name(sub) for sub  in all_submodules_name]
 
 #TODO : You know what for problem with kernel32.dll
 
-#TODO data.py -> Bytes / Word / Dword / String / cstr
-# ?? : Undef Data et (Undef code : exist now) ?
-
-
-# helper : reload(MIDAP); MIDAP.reload(); g = MIDAP.functions.MFunctions(); f = MIDAP.fhere(); i = MIDAP.ihere()
-
-# TODO: structures ?
-
-
-#TODO : CLEAR ON RELOAD
+# TODO: segments
 
 def reload():
     for submodule_name in all_submodules:
         mod = sys.modules[submodule_name]
         __builtins__['reload'](mod)
     fixup_late_import()
+    return sys.modules[__name__]
 
         
 #: this is really horrible
@@ -53,9 +45,17 @@ def fixup_late_import():
             setattr(mod, late_name,  late_mod)
     
     
-# TODO: find a real name    
+
 def ihere():
     "Typed here(): return current Instruction"
+    elt = ehere()
+    if elt.is_code:
+        return functions.IDAInstr(elt.addr)
+    elif elt in self.imports:
+        return functions.IDAImportInstr.from_import(self.imports[elt])
+    # Return UndefInstr ?
+    raise ValueError("Current position <{0}> is not code nor an import".format(hex(elt.addr)))
+    
     return functions.IDAInstr(idc.here())
 
 def bhere():
@@ -81,4 +81,4 @@ def ehere():
 
 fixup_late_import()
 
-self = idb.current
+self = idb.IDB()
