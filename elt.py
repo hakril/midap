@@ -111,7 +111,7 @@ class IDANamedElt(IDAElt):
         super(IDANamedElt, self).__init__(addr)
         
     def get_name(self):
-        return idc.Name(self.addr)
+        return idc.Name(self.addr) or ""
         
     # if already named auto-add prefix like _0 ? (seems good for automation)    
     def set_name(self, name):

@@ -5,7 +5,7 @@ import idaapi
 import idautils
 import idc
 
-late_import = ['xref']
+late_import = ['xref', 'stack', 'idb']
 
 
 # TODO : real name for constructor get_func and get_block
@@ -84,7 +84,11 @@ class IDAFunction(IDADefinedCodeElt):
     # use FuncItems ?     
     @property             
     def Instrs(self):
-        return [i for b in self.Blocks for i in b.Instrs]   
+        return [i for b in self.Blocks for i in b.Instrs]
+        
+    @property
+    def stack(self):
+        return stack.IDAStack(idc.GetFrame(self.addr), self)
      
     # Do "commentable interface ?"
     def get_comment(self, repeteable=True):
@@ -270,12 +274,19 @@ class IDAInstr(IDADefinedCodeElt):
         return jump_next
     
         
-    #Todo : rename
+    # Todo : rename
+    # Todo: handle data to stack variable :D (can be multiple for struct on stack...)
     @property
     def data(self):
         datas = [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
         if len(datas) > 1:
-            raise ValueError("Instruction {0} has more that one data xrefFrom".format(self))
+            # HAHA:  IDA have some fun idea: "and     [ebp+ms_exc.registration.TryLevel], 0" will have XrefFrom on "registration" and "TryLevel" struct members.. (but not on ms_exc)
+            # We really don't want those to be here: filter them
+            # They will be available when we have stack_var xref (with already implemented struct definition)
+            all_members = [m.addr for s in idb.current.Structs for m in s.members]
+            datas = [d for d in datas if d.to.addr not in all_members]
+        if len(datas) > 1:    
+            raise ValueError("Instruction {0} has more that one data xrefFrom (after members filtering)".format(self))
         if not datas:
             return None
         return datas[0]

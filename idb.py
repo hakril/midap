@@ -4,7 +4,7 @@ import idautils
 import ida_import
 
 
-late_import = ['functions', 'data']
+late_import = ['functions', 'data', 'struct']
  
  #Put this somewhere else
 class IDB(object):
@@ -19,6 +19,7 @@ class IDB(object):
 
     def __init__(self):
         # Already exist: no more init
+        # TODO: Use (FT_PE | FT_ELF) instead
         if hasattr(self, 'init'):
             return
         filetype = idaapi.get_file_type_name()
@@ -49,7 +50,8 @@ class IDB(object):
     @property
     def Instrs(self):
         return functions.IDAInstr.get_all()
-           
+     
+    @property
     def Data(self):
         return data.Data.get_all()
         
@@ -62,3 +64,11 @@ class IDB(object):
         if filter is not None:
             return [s for s in data_ascii_generator if filter(s)]
         return list(data_ascii_generator)
+      
+    @property
+    def Structs(self):
+        return [struct.StructDef(s[1]) for s in idautils.Structs()]
+        
+        
+ 
+current = IDB()

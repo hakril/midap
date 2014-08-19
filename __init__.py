@@ -10,8 +10,13 @@ import ida_import
 import idb
 import data
 import struct
+import stack
 
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct']
+import struct2
+
+struct = struct2 # test purpose REMOVE
+
+all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack']
 
 
 def get_full_submodule_name(name):
@@ -23,6 +28,7 @@ all_submodules = [get_full_submodule_name(sub) for sub  in all_submodules_name]
 #TODO : You know what for problem with kernel32.dll
 
 # TODO: segments
+# TODO: stack
 
 def reload():
     for submodule_name in all_submodules:
@@ -81,4 +87,4 @@ def ehere():
 
 fixup_late_import()
 
-self = idb.IDB()
+self = idb.current
