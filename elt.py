@@ -17,7 +17,7 @@ class IDAElt(object):
     def get_all(cls):
         return [cls(x) for x in idautils.Heads()]
     
-    #property ?
+    @property
     def goto(self):
         idc.Jump(self.addr)
         # chaining stuff
@@ -38,12 +38,12 @@ class IDAElt(object):
     @property    
     def xfrom(self):
         """ List of all XrefsFrom the element """
-        return [xref.Xref(x) for x in idautils.XrefsFrom(self.addr, False)]
+        return [xref.Xref(x).guess_xref_type() for x in idautils.XrefsFrom(self.addr, False)]
         
     @property   
     def xto(self):
         """ List of all XrefsTo the element """
-        return [xref.Xref(x) for x in idautils.XrefsTo(self.addr, False)]
+        return [xref.Xref(x).guess_xref_type() for x in idautils.XrefsTo(self.addr, False)]
         
     @property
     def flags(self):
@@ -81,7 +81,7 @@ class IDAElt(object):
     @property
     def has_extra_comment(self):
         """ 
-            Does this address has extra prev ou next line comments ?
+            Does this address has extra prev or next line comments ?
              - see LineA and LineB
         """
         return idc.isExtra(self.flags)
@@ -94,7 +94,7 @@ class IDAElt(object):
     def has_value(self):
         return idc.hasValue(self.flags) 
         
-    # comments: properties ? for normal and repeteable ?
+    # comments: properties ? for normal and repeteable ?...
     def set_comment(self, comment, repeteable=True):
         if repeteable:
             idc.MakeRptCmt(self.addr, comment)

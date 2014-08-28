@@ -11,12 +11,9 @@ import idb
 import data
 import struct
 import stack
+import flags
 
-import struct2
-
-struct = struct2 # test purpose REMOVE
-
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack']
+all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack', 'flags']
 
 
 def get_full_submodule_name(name):
@@ -81,6 +78,17 @@ def dhere():
 def ehere():
     "low typed here(): return current IDAElt for badic operations"
     return data.elt.IDAElt(idc.here())
+    
+def here():
+    """ Guess typed here(): return what seems more apropiate
+        May return IDAData or IDAInstr
+    """
+    elt = ehere()
+    if elt.is_code:
+        return ihere()
+    if elt in self.imports:
+        return self.imports[elt]
+    return dhere()
 
 
      

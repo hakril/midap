@@ -1,0 +1,8 @@
+Notes:
+
+functions to use:
+
+    get_many_bytes ?
+    
+
+TODO: remonter ESI depuis 0009B7DA

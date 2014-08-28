@@ -24,6 +24,8 @@ import idc
 
 #use struct_t and member_t ?
 
+# DOCUMENT THE SHIT OUT OF THIS :D
+
 class DataDefinition(data.Data):
     """ Abstract data for definition:
             size is retrieved differently
@@ -37,7 +39,7 @@ class DataDefinition(data.Data):
 
     
 class StructDef(DataDefinition):
-
+    """ Definition of a structure """
     @staticmethod
     def all_ids():
         return [idc.GetStrucId(i) for i in range(idc.GetStrucQty())]
@@ -46,6 +48,8 @@ class StructDef(DataDefinition):
         # Get sid by xrefsfrom struct variables
         self.sid = sid
         self.root = self
+        self._offset = 0 
+        # offset is always 0 as StructDef is a root struct (not a SubStructDef)
         # Make sid like the addr of StructDef ?
         super(StructDef, self).__init__(sid)
      
@@ -60,7 +64,14 @@ class StructDef(DataDefinition):
         return idc.SetStrucName(self.sid, value)
         
     name = property(get_name, set_name, None, "Name of the structure")
-        
+      
+    @property
+    def offset(self):
+        """ offset of the sub-struct into its root structure.
+            Is always 0 for StructDef
+        """
+        return self._offset
+      
     @property
     def nb_member(self):
         return idc.GetMemberQty(self.sid)
@@ -77,7 +88,7 @@ class StructDef(DataDefinition):
             if not m.is_struct:
                 res.append(m)
             else:
-                res.extend(m.definition.flat_members)
+                res.extend(m.to_struct.flat_members)
         return res
             
      
@@ -98,14 +109,22 @@ class StructDef(DataDefinition):
             off = idc.GetStrucNextOff(self.sid, off)
             
     # Hack by implementing is struct? a struct def is a struct..
+    # But it's not a struct data (so no)
             
                        
 class SubStrucDef(StructDef):
-    """ offset : global offset of the sub struct into root struct """
+    """ A structure definition that is part of another struct definition
+        Example:      
+            struct root{
+                int a
+                struct other x
+                }
+        root->x is a SubStructDef of 'other'
+    """
     def __init__(self, sid, parents_structs, base_offset):
         super(SubStrucDef, self).__init__(sid)
         self.parents_structs = parents_structs
-        self.offset = base_offset
+        self._offset = base_offset
         self.root = parents_structs[-1].root
         
     def __IDA_repr__(self):
@@ -124,7 +143,7 @@ class MemberDef(DataDefinition):
         self.mid = idc.GetMemberId(struct.sid, struct_offset)
         self.parent = struct
         self.struct_offset = struct_offset
-        self.offset = struct_offset
+        self._offset = struct_offset
         self.root = struct.root
         super(MemberDef, self).__init__(self.mid)
        
@@ -152,6 +171,10 @@ class MemberDef(DataDefinition):
     def flags(self):
         return idc.GetMemberFlag(self.parent.sid, self.struct_offset)
         
+    @property    
+    def offset(self):
+        return self._offset
+        
     @property
     def to_struct(self):
         if not self.is_struct:
@@ -174,12 +197,12 @@ class MemberDef(DataDefinition):
 
 class SubMemberDef(MemberDef):
     """ offset : offset in the root struct
-        struct_offset = offset in sur SubStructDef
+        struct_offset = offset in the SubStructDef
     """
     
     def __init__(self, parent_struct, struct_offset):
         super(SubMemberDef, self).__init__(parent_struct, struct_offset)
-        self.offset = parent_struct.offset + struct_offset
+        self._offset = parent_struct.offset + struct_offset
      
     @property
     def full_name(self):
@@ -191,6 +214,8 @@ class SubMemberDef(MemberDef):
        
 
 # Struct data
+
+# Rewrite it for better SubStruct Data.. (hidden or not)
        
 class StructData(data.Data):
     match = staticmethod(data.Data.is_struct.fget)
@@ -213,11 +238,18 @@ class StructData(data.Data):
        
     @property
     def members(self):
-        return [self.new_data_by_member_type(member) for member in self.definition.members]
+        real_def = self.definition
+        if isinstance(self.definition, MemberDef): # Where are a sub Struct data so a Member that is a struct
+            real_def = self.definition.to_struct
+            print("AUTO_DEREF")
+        return [self.new_data_by_member_type(member) for member in real_def.members]
         
     @property
     def flat_members(self):
-        return [self.new_data_by_member_type(member) for member in self.definition.flat_members]
+        real_def = self.definition
+        if isinstance(self.definition, MemberDef): # Where are a sub Struct data so a Member that is a struct
+            real_def = self.definition.to_struct
+        return [self.new_data_by_member_type(member) for member in real_def.flat_members]
                          
     def new_data_by_member_type(self, member):
         for subcls in data.Data.__subclasses__():
@@ -239,7 +271,7 @@ class StructData(data.Data):
                 return self.parent.name + "." + self.definition.path_name
                 
             def __IDA_repr__(self):
-                return self.name  + " " + super(MemberData, self).__IDA_repr__()
+                return super(MemberData, self).__IDA_repr__()
                 
             def get_struct_definition(self, addr):
                 """ Hack method for StructData because definition is given by the member paremeter of __init__"""

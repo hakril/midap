@@ -5,8 +5,7 @@ import idaapi
 import idautils
 
 import elt
-
-late_import = ['functions']
+import functions
 
 
 # TODO : merge both code
@@ -74,7 +73,7 @@ class IDAExportList(object):
         return iter(self.get_all)
         
 
-class IDAImport(elt.IDANamedElt):
+class IDAImport(functions.IDACodeElt): # CodeElt to do rjump on import
 
     def __init__(self, module_name, addr, name, ord):
         #name is ignored and will be accessed using the property of IDANamedElt

@@ -7,12 +7,9 @@ late_import = ['struct']
 
 # TODO : handle array ? // See if data size match data type ? Data.is_dword and Data.size = 400 -> 100 dword array ?
 
-# TODO : data with no Value (has_value is False)
-
-# why not: automatic subclassing :)
+# __new__ that return the matching subclass ?
 class Data(elt.IDANamedSizedElt):
 
-    # size == 0 doesn't make sens: need automatic subclassing :D
     size = -1
     match = staticmethod(lambda *args : False)
     # addr -> bool
@@ -168,13 +165,14 @@ class QwordData(Data):
     _get_value_func = staticmethod(idc.Qword)
     match = staticmethod(Data.is_qword.fget)
   
-# TODO : being able to create String from sub string  
+# TODO : being able to create String from sub string ?
 class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     """ 
         An IDA string:
             ASCIIData.size = size of the item encoded.
             len(ASCIIData.str) = size of the decoded string.
     """
+    max_char_displayed = 20
     match = staticmethod(Data.is_ascii.fget)
     
     
@@ -183,8 +181,8 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     
     def __init__(self, addr, auto_str=False): 
         # Not an error: we need to bypass the 'general' Data constructor | is that still the case ? with new Data constructor
-        super(Data, self).__init__(addr)
-        if self.type == -1: # Is not a string yet
+        super(ASCIIData, self).__init__(addr)
+        if self.type == -1 or self.type is None: # Is not a string yet
             if auto_str or Data(addr).is_ascii: # if is_ascii MakeString will juste add a name.
                 idc.MakeStr(addr, idc.BADADDR)
             else:
@@ -208,8 +206,8 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
         
     def __IDA_repr__(self):
         s = self.str
-        if len(s) > 10:
-            s = s[:10] + "..."
+        if len(s) > self.max_char_displayed:
+            s = s[:self.max_char_displayed] + "..."
         return '{0} "{1}"'.format(self.type_to_str(self.type), s)
         
     def __getitem__(self, index):
@@ -222,8 +220,6 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     @property    
     def bytes(self):
         return [ASCIIByteData(addr) for addr in range(self.addr, self.addr + self.size)]
- 
-    #TODO: is_cstr | is_unicode | is_pascal | is_len2 | is_len4 | is_ulen2 | is_ulen4
     
     @property
     def is_cstr(self):

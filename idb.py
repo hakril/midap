@@ -1,12 +1,12 @@
 import idaapi 
 import idautils
+import idc
 
 import ida_import
 
 
 late_import = ['functions', 'data', 'struct']
  
- #Put this somewhere else
 class IDB(object):
     current = None
     
@@ -28,11 +28,18 @@ class IDB(object):
         elif "ELF" in filetype:
             self.format = "ELF"
         else:
-            raise ValueError("Unknow format <{0}>".format(filetype))
+            raise ValueError("Unknown format <{0}>".format(filetype))
         self.imports = ida_import.IDAImportList()
         self.exports = ida_import.IDAExportList()
         self.init = True
         
+             
+    @property
+    def main(self):
+        main_addr = idc.GetLongPrm(idc.INF_MAIN)
+        if main_addr == idc.BADADDR:
+            return None
+        return functions.IDAFunction(main_addr)
              
     @property
     def is_pe(self):
@@ -55,19 +62,24 @@ class IDB(object):
     def Data(self):
         return data.Data.get_all()
         
-    # A filter really ? or user use its own list comprehension ? like for everything else ?
-    def Strings(self, filter=None, display_only_existing_strings=True):
+    @property
+    def Strings(self): # This will create new strings: put a name to it
+        return self.get_strings()
+    
+    @staticmethod
+    def get_strings(min_len=5, display_only_existing_strings=True):
         strs = idautils.Strings()
-        #Idea is: usef will use filter to discard strings 
-        strs.setup(0xffffffff, minlen=3, display_only_existing_strings=display_only_existing_strings)
-        data_ascii_generator = (data.ASCIIData(s.ea) for s in strs)
-        if filter is not None:
-            return [s for s in data_ascii_generator if filter(s)]
-        return list(data_ascii_generator)
+        #Do we export the other Strings.setup parameters ?
+        print(min_len)
+        strs.setup(0xffffffff, minlen=min_len, display_only_existing_strings=display_only_existing_strings)
+        return [data.ASCIIData(s.ea, True) for s in strs] #auto str construction ?
       
     @property
     def Structs(self):
         return [struct.StructDef(s[1]) for s in idautils.Structs()]
+        
+    def rebase(self, delta, flags=idc.MSF_FIXONCE):
+        return idc.rebase_program(delta, flags)
         
         
  

@@ -5,14 +5,12 @@ import idaapi
 import idautils
 import idc
 
-late_import = ['xref', 'stack', 'idb']
+late_import = ['xref', 'stack', 'idb', 'flags']
 
 
-# TODO : real name for constructor get_func and get_block
+# TODO : real name for 'constructors' get_func and get_block
 
-
-# TODO: revoir logique Blocks /  Instr (UPX example)
-        
+     
            
 class IDACodeElt(elt.IDANamedSizedElt):
     """ 
@@ -28,18 +26,14 @@ class IDACodeElt(elt.IDANamedSizedElt):
     def _gen_code_xto(self, ignore_normal_flow):
         for x in idautils.XrefsTo(self.addr, ignore_normal_flow):
             yield xref.CodeXref(x) 
-    
-    def _get_instr_rjumps(self): # might be remove : redundancy
-        return [x for x in self._gen_code_xto(True) if x.is_code and not x.is_nflow]
-    
+       
     # Yes : code can jump to undefined code (packer/ import / etc)
+    # So undefined instruction will have rjump
     @property
     def rjump(self): # find a better name ?
         """ reverse jump : all instr that jump on the first instruction of this code element (call included) """
-        return self._get_instr_rjumps()
-        
-       # undefine ?
-       # reanalyse ?
+        return [x for x in self._gen_code_xto(True) if x.is_code and not x.is_nflow]
+       
        
 class IDADefinedCodeElt(IDACodeElt):
     """
@@ -80,8 +74,7 @@ class IDAFunction(IDADefinedCodeElt):
     @property
     def Blocks(self):
         return [IDABlock(basic_block) for basic_block in idaapi.FlowChart(idaapi.get_func(self.addr), flags=idaapi.FC_PREDS)]
-     
-    # use FuncItems ?     
+          
     @property             
     def Instrs(self):
         return [i for b in self.Blocks for i in b.Instrs]
@@ -90,6 +83,10 @@ class IDAFunction(IDADefinedCodeElt):
     def stack(self):
         return stack.IDAStack(idc.GetFrame(self.addr), self)
      
+    @property
+    def func_flags(self):
+        return flags.FunctionFlags(idc.GetFunctionFlags(self.addr))
+     
     # Do "commentable interface ?"
     def get_comment(self, repeteable=True):
         return idc.GetFunctionCmt(self.addr, repeteable)
@@ -97,12 +94,9 @@ class IDAFunction(IDADefinedCodeElt):
     def set_comment(self, comment, repeteable=True):
         return idc.SetFunctionCmt(self.addr, comment, repeteable)
              
-    # Noping a complete fonction is not good for analyser
+    # Noping a complete fonction is not good for analyse
     # Maybe leave the last instr ?
-    
-   
-    # TODO: prev -> instructions that call a function :)
-        
+      
 
 class IDABlock(IDADefinedCodeElt):
 
@@ -280,12 +274,12 @@ class IDAInstr(IDADefinedCodeElt):
     def data(self):
         datas = [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
         if len(datas) > 1:
-            # HAHA:  IDA have some fun idea: "and     [ebp+ms_exc.registration.TryLevel], 0" will have XrefFrom on "registration" and "TryLevel" struct members.. (but not on ms_exc)
+            # HAHA:  IDA have some fun ideas: "and     [ebp+ms_exc.registration.TryLevel], 0" will have XrefFrom on "registration" and "TryLevel" struct members.. (but not on ms_exc)
             # We really don't want those to be here: filter them
             # They will be available when we have stack_var xref (with already implemented struct definition)
             all_members = [m.addr for s in idb.current.Structs for m in s.members]
             datas = [d for d in datas if d.to.addr not in all_members]
-        if len(datas) > 1:    
+        if len(datas) > 1:
             raise ValueError("Instruction {0} has more that one data xrefFrom (after members filtering)".format(self))
         if not datas:
             return None
