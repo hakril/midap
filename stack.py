@@ -63,18 +63,17 @@ class IDAStack(struct.StructDef): # IDAStrackFrame ?
     def saved_regs(self): # looks like " s" and " r" canot be renamed: use it ? :D
         return [m for m in self.members if self.locals_size <= m.offset < self.locals_size + self.saved_regs_size]
     
-       
-       
     @property
     def members(self): # see exemple in begin of file: GetStrucNextOff might return offset that are not named members
-        return [struct.MemberDef(self, offset) for offset in self._get_members_offset() if struct.MemberDef(self, offset).addr != -1]
+    # Also: stack has a last members with size None: hide it.
+        return [struct.MemberDef(self, offset) for offset in self._get_members_offset() if struct.MemberDef(self, offset).size is not None]
         
         
-    def _get_members_offset(self):  # Change e
+    def _get_members_offset(self):
         off = idc.GetFirstMember(self.sid)
         while off != idc.BADADDR:
             yield off
             off = idc.GetStrucNextOff(self.sid, off)
-    
+
 
     

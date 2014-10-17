@@ -36,6 +36,16 @@ class DataDefinition(data.Data):
         elt.IDAElt.__init__(self, addr)
         
     __IDA_repr__ = elt.IDANamedElt.__IDA_repr__
+	
+    def __repr__(self):
+        return "<{cls} {ida_repr}>".format(
+                cls=self.__class__.__name__,
+                ida_repr=self.__IDA_repr__())
+				
+    def __IDA_repr__(self):
+        if self.name is not "":
+            return self.name
+        return   "{no name}"
 
     
 class StructDef(DataDefinition):
@@ -140,7 +150,9 @@ class SubStrucDef(StructDef):
 class MemberDef(DataDefinition):
     def __init__(self, struct, struct_offset):
         # member id : no idea of its usage ...
-        self.mid = idc.GetMemberId(struct.sid, struct_offset)
+		# Doesn't exist in old version, addr will be struct_id and offset
+        #self.mid = idc.GetMemberId(struct.sid, struct_offset)
+        self.mid = (struct.sid, struct_offset)
         self.parent = struct
         self.struct_offset = struct_offset
         self._offset = struct_offset
@@ -148,15 +160,16 @@ class MemberDef(DataDefinition):
         super(MemberDef, self).__init__(self.mid)
        
     def get_name(self):
-        return idc.GetMemberName(self.parent.sid, self.struct_offset) or "{no_name}"
+        return idc.GetMemberName(*self.mid) or "{no_name}"
         
     def set_name(self, value):
         return idc.SetMemberName(self.parent.sid, self.struct_offset, value)
         
-    name = property(get_name, set_name, None, "Name of the member")
+    name = property(get_name, set_name, None, "Name of the structure member")
     
     @property
     def full_name(self):
+        "Complete name of the member (structure_name + substruct name + member name)"
         return ".".join([self.parent.name, self.name])
    
     @property
@@ -165,6 +178,7 @@ class MemberDef(DataDefinition):
      
     @property     
     def size(self):
+        "size of the member"
         return idc.GetMemberSize(self.parent.sid, self.struct_offset)
         
     @property
@@ -173,6 +187,7 @@ class MemberDef(DataDefinition):
         
     @property    
     def offset(self):
+        "Offset of the member in the complete structure"
         return self._offset
         
     @property
@@ -224,6 +239,9 @@ class StructData(data.Data):
         self.definition = self.get_struct_definition(addr)
         self.parent_struct = None
         super(StructData, self).__init__(addr, addr + self.definition.size)
+
+    def __IDA_repr__(self):
+        return super(StructData, self).__IDA_repr__() + " (of type {0})".format(self.definition.name)
 
        
     def get_struct_definition(self, addr):
@@ -296,3 +314,14 @@ class StructData(data.Data):
         return MemberData
 
          
+
+def new_struct(name, nb_field, field_size, is_union=False):
+    type_by_size = {1 : idc.FF_BYTE, 2: idc.FF_WORD, 4: idc.FF_DWRD, 8: idc.FF_QWRD}
+    if field_size not in type_by_size:
+		raise ValueError("field size muste be {0}".format(list(type_by_size)))
+    sid = idc.AddStrucEx(-1, name, is_union)
+    if sid == -1: # handle if name is already taken ?
+        raise ValueError('bad name <{0}> for struct name'.format(name))
+    for i in range(nb_field):
+        idc.AddStrucMember(sid, 'field_{0}'.format(i), i * field_size, idc.FF_DATA | type_by_size[field_size], -1, field_size)
+    return sid

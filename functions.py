@@ -17,7 +17,7 @@ class IDACodeElt(elt.IDANamedSizedElt):
         A code element:
         It may be defined or not
     """
-    # size = 0 ?
+    # size = 0 #?
     
     @property
     def is_defined(self):
@@ -103,7 +103,7 @@ class IDABlock(IDADefinedCodeElt):
       #Constructors
     @classmethod
     def get_block(cls, addr):
-        f = get_func(addr) # TODO: handle error
+        f = IDAFunction.get_func(addr) # TODO: handle error
         return [b for b in f.Blocks if addr in b][0]
         
     #all getter
@@ -187,11 +187,8 @@ class IDAImportInstr(IDAUndefInstr):
     @classmethod
     def from_import(cls, imp):
         return cls(imp.addr, imp)
-        
-    # revoir ca: ImportInstr and UndefInstr need rjump :)
-        
 
-# TODO : UndefInstr for call to undef place and call to exterieur (IAT)
+
 class IDAInstr(IDADefinedCodeElt):
     def __init__(self, addr, block=None):
         end_addr  = idc.NextHead(addr)
@@ -199,7 +196,7 @@ class IDAInstr(IDADefinedCodeElt):
         
         # Check (is_code | GetMnem) ? to prevent implicit disassembly ?  
         
-        #Get Operend may disass unknow Bytes so put it before GetMnem (do we need to accept this behaviour ?)
+        #Get Operand may disass unknow Bytes so put it before GetMnem (do we need to accept this behaviour ?)
         self.operands = [idc.GetOpnd(addr , i) for i in range(idaapi.UA_MAXOP) if idc.GetOpnd(addr , i) is not ""]
         self.mnemo = idc.GetMnem(addr)
         if self.mnemo == "":

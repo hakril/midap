@@ -11,7 +11,7 @@ class IDAElt(object):
     def get_addr(self):
         return self._addr
         
-    addr = property(get_addr, None, None, 'ea of the object')
+    addr = property(get_addr, None, None, 'effective address of the object')
     
     @classmethod
     def get_all(cls):
@@ -19,6 +19,7 @@ class IDAElt(object):
     
     @property
     def goto(self):
+        """Jump to the address of the object"""
         idc.Jump(self.addr)
         # chaining stuff
         return self
@@ -47,7 +48,11 @@ class IDAElt(object):
         
     @property
     def flags(self):
+        """ Return the Flags of the object """
         return idc.GetFlags(self.addr)
+		
+    def read(self, size):
+		return idc.GetManyBytes(self.addr, size, False)
         
     # do LineA and LineB ? for comments ?
     
@@ -55,27 +60,35 @@ class IDAElt(object):
       
     @property
     def is_code(self):
+        """Return True if current object is code """
         return idc.isCode(self.flags)
    
     @property
     def is_data(self):
+        """Return True if current object is data """
         return idc.isData(self.flags)
     
     @property    
     def is_unknow(self):
+        """Return True if current object type is unknow """
         return idc.isUnknown(self.flags)
         
     @property
     def is_head(self):
+        """Return True if current object is the Head of an IDB
+            (The beginning of a line)
+        """
         return idc.isHead(self.flags)
        
     @property
     def is_tail(self):
+        """ TODO : what is a tail finally ? """
         return idc.isTail(self.flags)
         
     # useful ? here ?
     @property     
     def is_var(self):
+        """ TODO : what is `idc.isVar` finally ? """
         return idc.isVar(self.flags)
       
     @property
@@ -88,20 +101,26 @@ class IDAElt(object):
         
     @property
     def has_ref(self):
+        """Return True if object has some xref (from or to) """
         return idc.isRef(self.flags) 
         
     @property
     def has_value(self):
+        """Return True if object has a defined value
+            (no interrogation mark in IDA)
+        """
         return idc.hasValue(self.flags) 
         
     # comments: properties ? for normal and repeteable ?...
     def set_comment(self, comment, repeteable=True):
+        """ set a comment for object (repeatable not )"""
         if repeteable:
             idc.MakeRptCmt(self.addr, comment)
         else:
             return idc.MakeComm(self.addr, comment)
         
     def get_comment(self, repeteable=True):
+        """ get comment for object (repeatable not )"""
         return idc.CommentEx(self.addr, repeteable)
      
 
@@ -117,7 +136,7 @@ class IDANamedElt(IDAElt):
     def set_name(self, name):
         return idc.MakeName(self.addr, name)
        
-    name = property(get_name, set_name, None, 'Name default property')
+    name = property(get_name, set_name, None, 'name of the object')
     
     def __IDA_repr__(self):
         if self.name is not "":
@@ -127,14 +146,17 @@ class IDANamedElt(IDAElt):
     # Do not use the Has*Name from idc because these have no sens
     @property
     def has_user_name(self):
+        """return True if object's name have been defined by the user"""
         return bool(self.flags & idc.FF_NAME)
         
     @property    
     def has_dummy_name(self):
+        """return True if object's name is auto-defined by IDA"""
         return bool(self.flags & idc.FF_LABL)
         
     @property  
     def has_name(self):
+        """return True if object has a name"""
         return bool(self.flags & idc.FF_ANYNAME)
 
         
@@ -153,6 +175,9 @@ class IDASizedElt(IDAElt):
         return self.addr <= value < self.endADDR
         
     def patch(self, patch, fill_nop=True):
+        """ change the content of object by `patch`
+                if fill_nop is True and size(patch) < size(object): add some 0x90
+        """
         print("PATCH ASKED at <{0}| size {1}> with {2}".format(self.addr, self.size, patch))
         nop = 0x90 #<- need to adapt to other platform
         if self.size < len(patch):
@@ -171,11 +196,17 @@ class IDASizedElt(IDAElt):
                 print("PATCH addr {0} with byte {1} failed".format(hex(addr), hex(byte)))
                 
     def replace(self, value):
+        """Patch integrality of object with value given in parameter"""
         return self.patch([value] * self.size)
      
     @property
     def bytes(self):
+        """Return list of bytes of the current object"""
         return [data.ByteData(addr) for addr in range(self.addr, self.addr + self.size)]
+	
+    @property
+    def str(self):
+		return "".join([chr(b.value) for b in self.bytes])
         
         
         

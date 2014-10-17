@@ -3,6 +3,7 @@ import idautils
 import idc
 
 import ida_import
+import elt
 
 
 late_import = ['functions', 'data', 'struct']
@@ -81,6 +82,14 @@ class IDB(object):
     def rebase(self, delta, flags=idc.MSF_FIXONCE):
         return idc.rebase_program(delta, flags)
         
-        
+class Selection(elt.IDASizedElt):
+	def __init__(self):
+		start, end = idc.SelStart(), idc.SelEnd()
+		if start == idc.BADADDR:
+			raise ValueError("No selection")
+		super(Selection, self).__init__(start, end)
+		
+	def __repr__(self):
+		return "<{0} <from {1} to {2}>>".format(self.__class__.__name__, hex(self.addr), hex(self.endADDR))
  
 current = IDB()
