@@ -1,7 +1,8 @@
 import idc
 import idautils
+import itertools
 
-late_import = ['xref', 'data']
+late_import = ['xref', 'data', 'cast']
 
 
 class IDAElt(object):
@@ -12,6 +13,11 @@ class IDAElt(object):
         return self._addr
         
     addr = property(get_addr, None, None, 'effective address of the object')
+    
+    def get_color(self):
+        return idc.GetColor(self.addr, idc.CIC_ITEM)
+        
+    color = property(get_color, None, None, 'Color of the current item')
     
     @classmethod
     def get_all(cls):
@@ -28,10 +34,13 @@ class IDAElt(object):
         return self.addr
         
     def __repr__(self):
+        addr_hex = hex(self.addr)
+        if addr_hex.endswith("L"):
+            addr_hex = addr_hex[:-1]
         return "<{cls} {ida_repr} <at {addr}>>".format(
                 cls=self.__class__.__name__,
                 ida_repr=self.__IDA_repr__(),
-                addr=hex(self.addr))
+                addr=addr_hex)
         
     def __IDA_repr__(self):
         return ""
@@ -55,9 +64,7 @@ class IDAElt(object):
 		return idc.GetManyBytes(self.addr, size, False)
         
     # do LineA and LineB ? for comments ?
-    
-    # Flags
-      
+         
     @property
     def is_code(self):
         """Return True if current object is code """
@@ -134,7 +141,15 @@ class IDANamedElt(IDAElt):
         
     # if already named auto-add prefix like _0 ? (seems good for automation)    
     def set_name(self, name):
-        return idc.MakeName(self.addr, name)
+        if idc.MakeName(self.addr, name):
+            return
+        # Fail : autoname
+        counter = itertools.count()
+        
+        for i in counter:
+            if idc.MakeName(self.addr, name + "_{0}".format(i)):
+                return True
+        raise ValueError("Out of infinite loop")
        
     name = property(get_name, set_name, None, 'name of the object')
     
@@ -207,6 +222,10 @@ class IDASizedElt(IDAElt):
     @property
     def str(self):
 		return "".join([chr(b.value) for b in self.bytes])
+     
+    @property
+    def heads(self):
+        return [cast.data_or_code_cast(IDAElt(addr)) for addr in idautils.Heads(self.addr, self.endADDR)]
         
         
         

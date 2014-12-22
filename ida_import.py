@@ -38,10 +38,12 @@ class IDAExportList(object):
     def __init__(self):
         self.exports_by_addr = collections.defaultdict(list)
         self.exports_by_name = {}
+        self.export_by_ordinal = {}
         for index, ordinal, addr, name in idautils.Entries():
            x = IDAExport(addr, ordinal, name)
            self.exports_by_addr[addr].append(x)
-           self.exports_by_name[name] = x 
+           self.exports_by_name[name] = x
+           self.export_by_ordinal[ordinal] = x
            #Entry point : doesnt works for ELF..
            # TODO: find real entry point method
            if  addr == ordinal:
@@ -71,6 +73,9 @@ class IDAExportList(object):
         
     def __iter__(self):
         return iter(self.get_all)
+        
+    def by_ord(self, ord):
+        return self.export_by_ordinal[ord]
         
 
 class IDAImport(functions.IDACodeElt): # CodeElt to do rjump on import

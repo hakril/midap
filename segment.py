@@ -17,10 +17,10 @@ class IDASegment(elt.IDANamedSizedElt):
     
     @property
     def end(self):     
-         return idc.SegEnd(addr)
+         return idc.SegEnd(self.addr)
          
     # make start and end descriptor writable to move segment ? (seems dangerous)     
-    def set_bound(self, startea=None, endea= None, flags=SEGMOD_KEEP):
+    def set_bound(self, startea=None, endea= None, flags=idc.SEGMOD_KEEP):
         """
         Change segment boundaries
 
@@ -35,23 +35,7 @@ class IDASegment(elt.IDANamedSizedElt):
             startea = self.start
         if endea is None:
             endea = self.end
-        return idc.SetSegBounds(self.start, startea, endea, flags)
-        
-         
-    def SetSegBounds(ea, startea, endea, flags):
-        """
-        Change segment boundaries
-
-        @param ea: any address in the segment
-        @param startea: new start address of the segment
-        @param endea: new end address of the segment
-        @param flags: combination of SEGMOD_... flags
-
-        @return: boolean success
-        """
-        return idaapi.set_segm_start(ea, startea, flags) & \
-               idaapi.set_segm_end(ea, endea, flags)
-         
+        return idc.SetSegBounds(self.start, startea, endea, flags)             
                
     def get_name(self):
         return idc.SegName(self.addr)

@@ -104,13 +104,34 @@ class Data(elt.IDANamedSizedElt):
     @property    
     def is_struct(self):
         return idc.isStruct(self.flags)
-         
+        
+    @property
+    def is_offset(self):
+        return idc.isOff0(self.flags)
+        
+    @property
+    def is_xref(self):
+        return idc.isOff0(self.flags) and self.xfrom
+     
+    # As xfrom if is_offset or is_struct
+    @property
+    def to(self):
+        if not self.is_xref:
+            raise ValueError("call 'to' on non-offset data")
+        return self.xfrom[0].to
+        
+    
+    
     def __IDA_repr__(self):
         if self._get_value_func is None:
             return self.name
         if not self.has_value:
-            return self.name + " " + "{no_value}"
-        return self.name + " " + hex(self.value)
+            ret =  self.name + " " + "{no_value}"
+        else:
+            ret = self.name + " " + hex(self.value)
+        if self.is_offset:
+            ret += " (offset)"
+        return ret
         
     @classmethod
     def new_data_by_size(cls, addr, size):
@@ -184,13 +205,29 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
         super(ASCIIData, self).__init__(addr)
         if self.type == -1 or self.type is None: # Is not a string yet
             if auto_str or Data(addr).is_ascii: # if is_ascii MakeString will juste add a name.
-                idc.MakeStr(addr, idc.BADADDR)
+                is_str = self._try_all_type_string(addr)
+                print(self.type)
+            # TODO : handle if MakeStr failed
+                if not is_str:
+                    raise ValueError("Cannot make string at addr {0}".format(hex(addr)))
             else:
                 raise ValueError("no string at addr {0}, use {0}(addr, auto_str=True) for automatic conversion".format(addr, self.__class__.__name__))
+        
+
+    def _try_all_type_string(self, addr_to_stringify):
+        old_INF_STRTYPE = idc.GetLongPrm(idc.INF_STRTYPE)
+        for i in range(len(self.type_value)):
+            idc.SetLongPrm(idc.INF_STRTYPE, i)
+            if idc.MakeStr(addr_to_stringify, idc.BADADDR):
+                idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
+                return True
+        idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
+        return False
         
     @property
     def str(self):
         """ The actual decoded python string """
+        print("CALL WITH {0} | {1}".format(self.addr, self.type))
         return idc.GetString(self.addr, -1, self.type)
     
     @property
@@ -213,6 +250,9 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     def __getitem__(self, index):
         b = self.bytes[index]
         return ASCIIByteData(b.addr)
+        
+    def __contains__(self, str):
+        return str in self.str
         
     def __len__(self):
         return len(self.bytes)
@@ -248,10 +288,3 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     @property
     def is_ulen4(self):
         return self.type == idc.ASCSTR_ULEN4
-        
-
-    
-    
-    
-
-    

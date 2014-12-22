@@ -12,8 +12,10 @@ import data
 import struct
 import stack
 import flags
+import cast
+import segment
 
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack', 'flags']
+all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack', 'flags', 'cast', 'segment']
 
 
 def get_full_submodule_name(name):
@@ -22,9 +24,6 @@ def get_full_submodule_name(name):
 all_submodules = [get_full_submodule_name(sub) for sub  in all_submodules_name]
 
 
-#TODO : You know what for problem with kernel32.dll
-
-# TODO: segments
 # TODO: stack
 
 def reload():
@@ -48,51 +47,70 @@ def fixup_late_import():
             setattr(mod, late_name,  late_mod)
     
     
-
-def ihere():
+# Put type dispatch functions elsewhere
+def ihere(addr=None):
     "Typed here(): return current Instruction"
-    elt = ehere()
-    if elt.is_code:
-        return functions.IDAInstr(elt.addr)
-    elif elt in self.imports:
-        return functions.IDAImportInstr.from_import(self.imports[elt])
-    # Return UndefInstr ?
-    raise ValueError("Current position <{0}> is not code nor an import".format(hex(elt.addr)))
-    
-    return functions.IDAInstr(idc.here())
+    elt = ehere(addr)
+    return cast.code_cast(elt)
 
-def bhere():
+def bhere(addr=None):
     "Typed here(): return current Block"
-    f = fhere()
+    f = fhere(addr)
     addr = idc.here()
     return [b for b in f.Blocks if addr in b][0]
 
-def fhere():
+def fhere(addr=None):
     "Typed here(): return current Function"
-    return functions.IDAFunction.get_func(idc.here())
+    if addr is None:
+        addr = idc.here()
+    return functions.IDAFunction.get_func(addr)
     
-def dhere():
+def dhere(addr=None):
     "Typed here(): return current Data"
-    return data.Data.new_data_by_type(idc.here())
+    if addr is None:
+        addr = idc.here()
+    return data.Data.new_data_by_type(addr)
     
-def ehere():
+def ehere(addr=None):
     "low typed here(): return current IDAElt for badic operations"
-    return data.elt.IDAElt(idc.here())
+    if addr is None:
+        addr = idc.here()
+    return data.elt.IDAElt(addr)
     
-def here():
+def here(addr=None):
     """ Guess typed here(): return what seems more apropiate
         May return IDAData or IDAInstr
     """
-    elt = ehere()
-    if elt.is_code:
-        return ihere()
-    if elt in self.imports:
-        return self.imports[elt]
-    return dhere()
+    elt = ehere(addr)
+    return cast.data_or_code_cast(elt)
 
 
-     
+# TODO : move this elsewhere
 
+def find_all_bin(str):
+    start_addr = 0
+    res = []
+    while start_addr != idc.BADADDR:
+        addr = idc.FindBinary(start_addr + 1, idc.SEARCH_DOWN, str, 16)
+        if addr == idc.BADADDR:
+            break
+        yield here(addr)
+        start_addr = addr
+    return
+
+ 
 fixup_late_import()
-
 self = idb.current
+
+def select():
+    return idb.Selection()
+    
+    
+# Handle auto reload
+
+self_mod = sys.modules[__name__]
+if hasattr(self_mod, "__is_imported"):
+        # reload
+        self_mod.reload()    
+    
+__is_imported = True

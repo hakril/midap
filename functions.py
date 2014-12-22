@@ -77,14 +77,14 @@ class IDAFunction(IDADefinedCodeElt):
           
     @property             
     def Instrs(self):
-        return [i for b in self.Blocks for i in b.Instrs]
-        
+        return [IDAInstr(i) for i in idautils.FuncItems(self.addr)]
+                
     @property
     def stack(self):
         return stack.IDAStack(idc.GetFrame(self.addr), self)
      
     @property
-    def func_flags(self):
+    def flags(self):
         return flags.FunctionFlags(idc.GetFunctionFlags(self.addr))
      
     # Do "commentable interface ?"
@@ -188,7 +188,7 @@ class IDAImportInstr(IDAUndefInstr):
     def from_import(cls, imp):
         return cls(imp.addr, imp)
 
-
+        
 class IDAInstr(IDADefinedCodeElt):
     def __init__(self, addr, block=None):
         end_addr  = idc.NextHead(addr)
@@ -197,17 +197,22 @@ class IDAInstr(IDADefinedCodeElt):
         # Check (is_code | GetMnem) ? to prevent implicit disassembly ?  
         
         #Get Operand may disass unknow Bytes so put it before GetMnem (do we need to accept this behaviour ?)
-        self.operands = [idc.GetOpnd(addr , i) for i in range(idaapi.UA_MAXOP) if idc.GetOpnd(addr , i) is not ""]
         self.mnemo = idc.GetMnem(addr)
         if self.mnemo == "":
             raise ValueError("address <{0}> is not an instruction".format(hex(self.addr)))
-        self.completeinstr = "{0} {1}".format(self.mnemo, ",".join(self.operands))
         self._block = block
+        self.operands = [IDAOperand(self, i) for i in range(idaapi.UA_MAXOP) if not IDAOperand(self, i).is_void]
         
     #Any better way to do this ?
     @classmethod
     def get_all(cls):
         return [IDAInstr(ea) for ea in idautils.Heads() if elt.IDAElt(ea).is_code]
+        
+            
+    @property
+    def completeinstr(self):
+        return idc.GetDisasm(self.addr)
+        
         
     @property        
     def func(self):
@@ -246,8 +251,6 @@ class IDAInstr(IDADefinedCodeElt):
     def _get_instr_jumps(self): # might be remove : redundancy
         return [x for x in self._gen_code_xfrom(True) if x.is_code and not x.is_nflow]
         
-
-    
     @property
     def jump(self):
         jump_next = self._get_instr_jumps()
@@ -291,6 +294,76 @@ class IDAInstr(IDADefinedCodeElt):
          
     def __IDA_repr__(self):
         return "{" + self.completeinstr + "}"
+        
+class IDAOperand(elt.IDAElt):
+    # o_void     #  No Operand                           ----------
+    # o_reg      #  General Register (al,ax,es,ds...)    reg
+    # o_mem      #  Direct Memory Reference  (DATA)      addr
+    # o_phrase   #  Memory Ref [Base Reg + Index Reg]    phrase
+    # o_displ    #  Memory Reg [Base Reg + Index Reg + Displacement] phrase+addr
+    # o_imm      #  Immediate Value                      value
+    # o_far      #  Immediate Far Address  (CODE)        addr
+    # o_near     #  Immediate Near Address (CODE)        addr
+    
+    op_type_name =  { idc.o_void : "void",
+                    idc.o_reg    : "reg",
+                    idc.o_mem    : "mem",
+                    idc.o_phrase : "phrase",
+                    idc.o_displ  : "displ",
+                    idc.o_imm    : "imm",
+                    idc.o_far    : "far",
+                    idc.o_near   : "near"}
+    
+    
+
+    def __init__(self, instruction, op_number):
+        super(IDAOperand, self).__init__(instruction.addr)
+        self.instruction = instruction
+        self.op_number = op_number
+   
+    @property
+    def str(self):
+        return idc.GetOpnd(self.addr , self.op_number)
+        
+    @property
+    def type(self):
+        return idc.GetOpType(self.addr , self.op_number)
+        
+    @property
+    def value(self):
+        return idc.GetOperandValue(self.addr , self.op_number)
+     
+     
+    @property
+    def is_void(self):
+        return self.type == idc.o_void 
+     
+    @property
+    def is_reg(self):
+        return self.type == idc.o_reg
+        
+    @property
+    def is_mem(self):
+        return self.type == idc.o_mem    
+
+    @property
+    def is_imm(self):
+        return self.type == idc.o_imm  
+        
+    @property
+    def is_phrase(self):
+        return self.type == idc.o_phrase
+        
+    @property
+    def is_far(self):
+        return self.type == idc.o_far
+        
+    @property
+    def is_near(self):
+        return self.type == idc.o_near
+        
+    def __IDA_repr__(self):
+        return "<{0}>(nb={1}|type={3})>".format(self.str, self.op_number, self.instruction.completeinstr, self.op_type_name.get(self.type, "unknow"))
         
 
 

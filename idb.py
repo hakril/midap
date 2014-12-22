@@ -6,7 +6,7 @@ import ida_import
 import elt
 
 
-late_import = ['functions', 'data', 'struct']
+late_import = ['functions', 'data', 'struct', 'segment']
  
 class IDB(object):
     current = None
@@ -28,6 +28,8 @@ class IDB(object):
             self.format = "PE"
         elif "ELF" in filetype:
             self.format = "ELF"
+        elif "Binary file" == filetype:
+            self.format = "Binary file"
         else:
             raise ValueError("Unknown format <{0}>".format(filetype))
         self.imports = ida_import.IDAImportList()
@@ -64,16 +66,29 @@ class IDB(object):
         return data.Data.get_all()
         
     @property
+    def Segments(self):
+        return {s.name : s for s in [segment.IDASegment(seg) for seg in idautils.Segments()]}
+        
+    @property
     def Strings(self): # This will create new strings: put a name to it
         return self.get_strings()
     
     @staticmethod
-    def get_strings(min_len=5, display_only_existing_strings=True):
+    def get_strings(min_len=5, display_only_existing_strings=False, debug=False):
         strs = idautils.Strings()
         #Do we export the other Strings.setup parameters ?
-        print(min_len)
         strs.setup(0xffffffff, minlen=min_len, display_only_existing_strings=display_only_existing_strings)
-        return [data.ASCIIData(s.ea, True) for s in strs] #auto str construction ?
+        res = []
+        fails = []
+        for s in strs:
+#            try:
+                 res.append(data.ASCIIData(s.ea, True))
+#            except ValueError as e:
+#                print("String list error : {0}".format(e))
+#                fails.append(s.ea)
+        if debug:
+            return res, fails
+        return res #auto str construction ?
       
     @property
     def Structs(self):
