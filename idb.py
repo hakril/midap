@@ -24,6 +24,7 @@ class IDB(object):
         if hasattr(self, 'init'):
             return
         filetype = idaapi.get_file_type_name()
+        # This code is really dumb..
         if "PE" in filetype:
             self.format = "PE"
         elif "ELF" in filetype:
@@ -31,7 +32,7 @@ class IDB(object):
         elif "Binary file" == filetype:
             self.format = "Binary file"
         else:
-            raise ValueError("Unknown format <{0}>".format(filetype))
+            self.format = "Unknow"
         self.imports = ida_import.IDAImportList()
         self.exports = ida_import.IDAExportList()
         self.init = True
@@ -39,38 +40,43 @@ class IDB(object):
              
     @property
     def main(self):
+        "Return the main function of the IDB"
         main_addr = idc.GetLongPrm(idc.INF_MAIN)
         if main_addr == idc.BADADDR:
             return None
         return functions.IDAFunction(main_addr)
              
     @property
-    def is_pe(self):
+    def is_pe(self): #  You can do better than that..
         return self.format == "PE"
         
     @property
-    def is_elf(self):
+    def is_elf(self): #  You can do better than that..
         return self.format == "ELF"
 
     @property
     def Functions(self):
-        "Return all functions in IDB"
+        "all functions in IDB"
         return functions.IDAFunction.get_all()
         
     @property
     def Instrs(self):
+        "all instructions in IDB"
         return functions.IDAInstr.get_all()
      
     @property
     def Data(self):
+        "all datas in IDB"
         return data.Data.get_all()
         
     @property
     def Segments(self):
+        "dict {name : segment} of all segments in IDB"
         return {s.name : s for s in [segment.IDASegment(seg) for seg in idautils.Segments()]}
         
     @property
     def Strings(self): # This will create new strings: put a name to it
+        "All strings in IDB"
         return self.get_strings()
     
     @staticmethod
@@ -81,21 +87,30 @@ class IDB(object):
         res = []
         fails = []
         for s in strs:
-#            try:
+            try:
                  res.append(data.ASCIIData(s.ea, True))
-#            except ValueError as e:
-#                print("String list error : {0}".format(e))
-#                fails.append(s.ea)
+            except ValueError as e:
+                if (s.ea < res[-1].addr + len(data.ASCIIData(res[-1].addr))):
+                    print("Pass substring")
+                    continue
+                print("String list error : {0}".format(e))
+                fails.append(s.ea)
+                raise
         if debug:
             return res, fails
         return res #auto str construction ?
       
     @property
     def Structs(self):
+        "All structs definitions in the IDB"
         return [struct.StructDef(s[1]) for s in idautils.Structs()]
         
-    def rebase(self, delta, flags=idc.MSF_FIXONCE):
+    def rebase_delta(self, delta, flags=idc.MSF_FIXONCE):
         return idc.rebase_program(delta, flags)
+        
+    def rebase_fix(self, addr, flags=idc.MSF_FIXONCE):
+        delta = addr - idc.MinEA()
+        return self.rebase_delta(delta, flags)   
         
 class Selection(elt.IDASizedElt):
 	def __init__(self):

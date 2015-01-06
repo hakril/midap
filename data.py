@@ -1,5 +1,6 @@
-import elt
+import itertools
 
+import elt
 import idc
 import idautils
 
@@ -213,15 +214,34 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
             else:
                 raise ValueError("no string at addr {0}, use {0}(addr, auto_str=True) for automatic conversion".format(addr, self.__class__.__name__))
         
-
-    def _try_all_type_string(self, addr_to_stringify):
-        old_INF_STRTYPE = idc.GetLongPrm(idc.INF_STRTYPE)
-        for i in range(len(self.type_value)):
-            idc.SetLongPrm(idc.INF_STRTYPE, i)
-            if idc.MakeStr(addr_to_stringify, idc.BADADDR):
-                idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
+    @classmethod
+    # BAD : redo it (i dont think INF_STRTYPE is 0 to 7)
+    def _try_all_type_string(cls, addr_to_stringify):
+        import string
+        string.printable
+        if idc.MakeStr(addr_to_stringify, idc.BADADDR):
+            return True
+        # Try bytes by bytes:
+        if idc.MakeStr(addr_to_stringify, addr_to_stringify + 0):
+            return True
+        if not idc.MakeStr(addr_to_stringify, addr_to_stringify + 1):
+            return False
+        # String created : try to create the biggest string possible with only ascci
+        for i in itertools.count(1):
+            if not chr(ByteData(addr_to_stringify +i).value) in string.printable:
                 return True
-        idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
+            if not idc.MakeStr(addr_to_stringify, addr_to_stringify + i):
+                return True
+            
+    
+    
+        #old_INF_STRTYPE = idc.GetLongPrm(idc.INF_STRTYPE)
+        #for i in range(len(cls.type_value)):
+        #    idc.SetLongPrm(idc.INF_STRTYPE, i)
+        #    if idc.MakeStr(addr_to_stringify, idc.BADADDR):
+        #        idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
+        #        return True
+        #idc.SetLongPrm(idc.INF_STRTYPE, old_INF_STRTYPE)
         return False
         
     @property
@@ -255,7 +275,9 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
         return str in self.str
         
     def __len__(self):
-        return len(self.bytes)
+        res = len(self.bytes)
+        print("Asked for length of str at {0} -> {1}".format(hex(self.addr), res))
+        return res
         
     @property    
     def bytes(self):

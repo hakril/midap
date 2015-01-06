@@ -73,18 +73,22 @@ class IDAFunction(IDADefinedCodeElt):
    
     @property
     def Blocks(self):
+        "Blocks in the function"
         return [IDABlock(basic_block) for basic_block in idaapi.FlowChart(idaapi.get_func(self.addr), flags=idaapi.FC_PREDS)]
           
     @property             
     def Instrs(self):
+        "Instructions in the function"
         return [IDAInstr(i) for i in idautils.FuncItems(self.addr)]
                 
     @property
     def stack(self):
+        "Stack of the function"
         return stack.IDAStack(idc.GetFrame(self.addr), self)
      
     @property
     def flags(self):
+        "Flags of the function"
         return flags.FunctionFlags(idc.GetFunctionFlags(self.addr))
      
     # Do "commentable interface ?"
@@ -93,22 +97,21 @@ class IDAFunction(IDADefinedCodeElt):
         
     def set_comment(self, comment, repeteable=True):
         return idc.SetFunctionCmt(self.addr, comment, repeteable)
-             
-    # Noping a complete fonction is not good for analyse
-    # Maybe leave the last instr ?
-      
+                   
 
 class IDABlock(IDADefinedCodeElt):
 
-      #Constructors
+    #Constructors
     @classmethod
     def get_block(cls, addr):
+        "Get all the blocks for function at address 'addr'"
         f = IDAFunction.get_func(addr) # TODO: handle error
         return [b for b in f.Blocks if addr in b][0]
         
     #all getter
     @classmethod
     def get_all(cls):
+        "Get all blocks of all functions in IDB"
         return [b for f in IDAFunction.get_all() for b in f.Blocks]
         
     def __init__(self, basic_block):
@@ -117,27 +120,33 @@ class IDABlock(IDADefinedCodeElt):
     
     @property    
     def Instrs(self):
+        "Instructions in the block"
         return [IDAInstr(addr, self) for addr in  idautils.Heads(self.addr, self.endADDR)]
     
     @property
     def Succs(self):
+        "List of blocks succeeding of the current block"
         return [IDABlock(basic_block) for basic_block in self.basic_block.succs()]
         
     @property
     def Preds(self):
+        "List of blocks preceding of the current block"
         return [IDABlock(basic_block) for basic_block in self.basic_block.preds()]
     
     @property    
     def is_noret(self):
+        "is True if block is NOT a ret block (have successor)"
         return idaapi.is_noret_block(self.basic_block.type)
     
     @property
     def is_ret(self):
+        "is True if block is a ret block (no successor)"
         return idaapi.is_ret_block(self.basic_block.type)
     
     # Duplicate code from IDAInstr, missing one abstraction ? (IDAFuncElt ? for member potentially in a function ?)
     @property
     def func(self):
+        "Return the function the block is member of"
         try:
             return IDAFunction.get_func(self.addr)
         except ValueError:
@@ -206,16 +215,19 @@ class IDAInstr(IDADefinedCodeElt):
     #Any better way to do this ?
     @classmethod
     def get_all(cls):
+        "Return all instructions in the IDB"
         return [IDAInstr(ea) for ea in idautils.Heads() if elt.IDAElt(ea).is_code]
         
             
     @property
     def completeinstr(self):
+        "Complete disassembly of the instruction"
         return idc.GetDisasm(self.addr)
         
         
     @property        
     def func(self):
+        "Return the function the instruction is member of"
         try:
             return IDAFunction.get_func(self.addr)
         except ValueError:
@@ -223,6 +235,7 @@ class IDAInstr(IDADefinedCodeElt):
           
     @property        
     def block(self):
+        "Return the block the instruction is member of"
         if self._block is not None:
             return self._block
         return IDABlock.get_block(self.addr)
@@ -235,6 +248,7 @@ class IDAInstr(IDADefinedCodeElt):
         
     @property
     def next(self):
+        "Return the next instruction in normal execution flow"
         normal_next = [x for x in self._gen_code_xfrom(False) if x.is_code and x.is_nflow]
         if len(normal_next) > 1:
             raise ValueError("Instruction {0} has more that one normal flow xrefFrom".format(self))
@@ -244,6 +258,7 @@ class IDAInstr(IDADefinedCodeElt):
     
     @property    
     def prev(self):
+        "Return the previous instruction in normal execution flow if any else None"
         if not self.has_flow_prev:
             return None
         return IDAInstr(idc.PrevHead(self.addr))
@@ -253,6 +268,7 @@ class IDAInstr(IDADefinedCodeElt):
         
     @property
     def jump(self):
+        "return the CodeXref of a jump instruction else None"
         jump_next = self._get_instr_jumps()
         if len(jump_next) != 1:
             # This is not a simple call / jmp
@@ -262,6 +278,7 @@ class IDAInstr(IDADefinedCodeElt):
      
     @property
     def switch(self):
+        "return the list of CodeXref of a switch instruction else None"
         jump_next = self._get_instr_jumps()
         if len(jump_next) <= 1:
             return None
@@ -272,6 +289,7 @@ class IDAInstr(IDADefinedCodeElt):
     # Todo: handle data to stack variable :D (can be multiple for struct on stack...)
     @property
     def data(self):
+        "return DataXref of the instruction if any else None"
         datas = [xref.CodeToDataXref(x) for x in idautils.XrefsFrom(self.addr, False) if not x.iscode]
         if len(datas) > 1:
             # HAHA:  IDA have some fun ideas: "and     [ebp+ms_exc.registration.TryLevel], 0" will have XrefFrom on "registration" and "TryLevel" struct members.. (but not on ms_exc)
@@ -288,6 +306,10 @@ class IDAInstr(IDADefinedCodeElt):
         
     @property
     def is_flow(self):
+        """return True if instruction 'Exec flow from prev instruction'
+        idc.py:
+            FF_FLOW  = idaapi.FF_FLOW  # Exec flow from prev instruction?
+         """
         return idc.isFlow(self.flags)
         
     has_flow_prev = is_flow
@@ -323,16 +345,18 @@ class IDAOperand(elt.IDAElt):
    
     @property
     def str(self):
+        "The string representation of the operand"
         return idc.GetOpnd(self.addr , self.op_number)
         
     @property
     def type(self):
+        "The type of the operand"
         return idc.GetOpType(self.addr , self.op_number)
         
     @property
     def value(self):
+        "The type of the operand"
         return idc.GetOperandValue(self.addr , self.op_number)
-     
      
     @property
     def is_void(self):

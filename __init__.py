@@ -25,6 +25,8 @@ all_submodules = [get_full_submodule_name(sub) for sub  in all_submodules_name]
 
 
 # TODO: stack
+#offset = idaapi.get_fileregion_offset(ea)
+#ea = idaapi.get_fileregion_ea(offset)
 
 def reload():
     for submodule_name in all_submodules:
@@ -100,11 +102,10 @@ def find_all_bin(str):
 
  
 fixup_late_import()
-self = idb.current
+
 
 def select():
     return idb.Selection()
-    
     
 # Handle auto reload
 
@@ -113,4 +114,5 @@ if hasattr(self_mod, "__is_imported"):
         # reload
         self_mod.reload()    
     
+self = idb.current
 __is_imported = True
