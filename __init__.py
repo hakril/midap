@@ -15,6 +15,8 @@ import flags
 import cast
 import segment
 
+from utils import int_hex
+
 all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'struct', 'stack', 'flags', 'cast', 'segment']
 
 
@@ -35,7 +37,7 @@ def reload():
     fixup_late_import()
     return sys.modules[__name__]
 
-        
+
 #: this is really horrible
 # but fun to code, and I don't know how else to do right now
 def fixup_late_import():
@@ -47,8 +49,8 @@ def fixup_late_import():
             continue
         for late_name, late_mod in [(late, sys.modules[get_full_submodule_name(late)]) for late in late_import]:
             setattr(mod, late_name,  late_mod)
-    
-    
+
+
 # Put type dispatch functions elsewhere
 def ihere(addr=None):
     "Typed here(): return current Instruction"
@@ -66,25 +68,26 @@ def fhere(addr=None):
     if addr is None:
         addr = idc.here()
     return functions.IDAFunction.get_func(addr)
-    
+
 def dhere(addr=None):
     "Typed here(): return current Data"
     if addr is None:
         addr = idc.here()
     return data.Data.new_data_by_type(addr)
-    
+
 def ehere(addr=None):
     "low typed here(): return current IDAElt for badic operations"
     if addr is None:
         addr = idc.here()
     return data.elt.IDAElt(addr)
-    
+
 def here(addr=None):
     """ Guess typed here(): return what seems more apropiate
         May return IDAData or IDAInstr
     """
     elt = ehere(addr)
     return cast.data_or_code_cast(elt)
+
 
 
 # TODO : move this elsewhere
@@ -100,19 +103,19 @@ def find_all_bin(str):
         start_addr = addr
     return
 
- 
+
 fixup_late_import()
 
 
 def select():
     return idb.Selection()
-    
+
 # Handle auto reload
 
 self_mod = sys.modules[__name__]
 if hasattr(self_mod, "__is_imported"):
         # reload
-        self_mod.reload()    
-    
+        self_mod.reload()
+
 self = idb.current
 __is_imported = True

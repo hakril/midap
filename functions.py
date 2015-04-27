@@ -90,6 +90,22 @@ class IDAFunction(IDADefinedCodeElt):
     def flags(self):
         "Flags of the function"
         return flags.FunctionFlags(idc.GetFunctionFlags(self.addr))
+        
+    @property
+    def type(self):
+        "Type of the function (calling convention and arguments)"
+        return idc.GetType(self.addr)
+     
+    @property
+    def arguments(self):
+        t = self.type
+        begin = t.find("(")
+        end = t.find(")")
+        raw_args = t[begin + 1: end - 1]
+        if not raw_args:
+            return []
+        return [arg.split() for arg in raw_args.split(",")]
+        
      
     # Do "commentable interface ?"
     def get_comment(self, repeteable=True):
