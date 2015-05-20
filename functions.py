@@ -48,7 +48,7 @@ class IDADefinedCodeElt(IDACodeElt):
         return True
 
 class IDAFunction(IDADefinedCodeElt):
-
+    """Represent an IDA sub"""
     # Constructors
     @classmethod
     def get_func(cls, addr):
@@ -116,7 +116,7 @@ class IDAFunction(IDADefinedCodeElt):
                    
 
 class IDABlock(IDADefinedCodeElt):
-
+    """Represent a basic bloc of code"""
     #Constructors
     @classmethod
     def get_block(cls, addr):
@@ -175,7 +175,7 @@ class IDABlock(IDADefinedCodeElt):
 class IDAUndefInstr(IDACodeElt):
     """ Undefined instruction:
         Accessible by code flow but code cannot be know with static informations.
-            - Can be rewriting code, unpacking, ...
+        - Can be rewriting code, unpacking, ...
     """
         
     def __init__(self, addr):
@@ -215,6 +215,7 @@ class IDAImportInstr(IDAUndefInstr):
 
         
 class IDAInstr(IDADefinedCodeElt):
+    """Represent an instruction"""
     def __init__(self, addr, block=None):
         end_addr  = idc.NextHead(addr)
         super(IDAInstr, self).__init__(addr, end_addr)
@@ -324,7 +325,7 @@ class IDAInstr(IDADefinedCodeElt):
     def is_flow(self):
         """return True if instruction 'Exec flow from prev instruction'
         idc.py:
-            FF_FLOW  = idaapi.FF_FLOW  # Exec flow from prev instruction?
+        FF_FLOW  = idaapi.FF_FLOW  # Exec flow from prev instruction?
          """
         return idc.isFlow(self.flags)
         

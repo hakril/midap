@@ -4,7 +4,7 @@ import elt
 import idc
 import idautils
 
-late_import = ['struct']
+late_import = ['idastruct']
 
 # TODO : handle array ? // See if data size match data type ? Data.is_dword and Data.size = 400 -> 100 dword array ?
 

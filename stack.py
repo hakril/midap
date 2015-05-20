@@ -1,4 +1,4 @@
-import struct
+import idastruct
 import idc
 
 # Important:
@@ -29,7 +29,7 @@ import idc
 
 # Use function flags
 
-class IDAStack(struct.StructDef): # IDAStrackFrame ?
+class IDAStack(idastruct.StructDef): # IDAStrackFrame ?
     def __init__(self, addr, func):
         super(IDAStack, self).__init__(addr)
         self.func = func
@@ -66,7 +66,7 @@ class IDAStack(struct.StructDef): # IDAStrackFrame ?
     @property
     def members(self): # see exemple in begin of file: GetStrucNextOff might return offset that are not named members
     # Also: stack has a last members with size None: hide it.
-        return [struct.MemberDef(self, offset) for offset in self._get_members_offset() if struct.MemberDef(self, offset).size is not None]
+        return [idastruct.MemberDef(self, offset) for offset in self._get_members_offset() if idastruct.MemberDef(self, offset).size is not None]
         
         
     def _get_members_offset(self):

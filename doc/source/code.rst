@@ -1,4 +1,4 @@
 Code Related Objects
 ====================
 
-.. automodule:: functions
+.. automodule:: midap.functions

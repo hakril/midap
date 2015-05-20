@@ -97,7 +97,6 @@ class IDAImport(functions.IDACodeElt): # CodeElt to do rjump on import
 class IDAImportList(object):
     # Really need import by name ?
     def __init__(self):
-        
         #strongly inspired by ex_imports.py in IDAPython examples
         self.imports_by_name = {}
         self.imports_by_addr = {}

@@ -10,4 +10,5 @@ midap: Pythonic IDAPython Wrapper
 .. toctree::
     :maxdepth: 3
    
+    entry.rst
     code.rst

@@ -6,7 +6,7 @@ import ida_import
 import elt
 
 
-late_import = ['functions', 'data', 'struct', 'segment']
+late_import = ['functions', 'data', 'idastruct', 'segment']
 
 class IDB(object):
     current = None
@@ -23,21 +23,31 @@ class IDB(object):
         # TODO: Use (FT_PE | FT_ELF) instead
         if hasattr(self, 'init'):
             return
+        self.init = True
+
+    @property
+    def format(self):
+        "really useful ? better IDA api for that ?"
         filetype = idaapi.get_file_type_name()
         # This code is really dumb..
         if "PE" in filetype:
-            self.format = "PE"
+            format = "PE"
         elif "ELF" in filetype:
-            self.format = "ELF"
+            format = "ELF"
         elif "Binary file" == filetype:
-            self.format = "Binary file"
+            format = "Binary file"
         else:
-            self.format = "Unknow"
-        self.imports = ida_import.IDAImportList()
-        self.exports = ida_import.IDAExportList()
-        self.init = True
-
-
+            format = "Unknow"
+        return format
+        
+    @property
+    def imports(self):
+        return ida_import.IDAImportList()
+        
+    @property
+    def export(self):
+        return ida_import.IDAExportList()
+        
     @property
     def main(self):
         "Return the main function of the IDB"
