@@ -39,7 +39,7 @@ extensions = [
 
 autodoc_mock_imports = ['idc', 'idaapi', 'idautils']
 
-autodoc_default_flags = ['show-inheritance', 'inherited-members']
+autodoc_default_flags = ['show-inheritance', 'members']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

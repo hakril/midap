@@ -6,7 +6,7 @@ import ida_import
 import elt
 
 
-late_import = ['functions', 'data', 'idastruct', 'segment']
+late_import = ['code', 'data', 'idastruct', 'segment']
 
 class IDB(object):
     current = None
@@ -54,7 +54,7 @@ class IDB(object):
         main_addr = idc.GetLongPrm(idc.INF_MAIN)
         if main_addr == idc.BADADDR:
             return None
-        return functions.IDAFunction(main_addr)
+        return code.IDAFunction(main_addr)
 
     @property
     def is_pe(self): #  You can do better than that..
@@ -67,12 +67,12 @@ class IDB(object):
     @property
     def Functions(self):
         "all functions in IDB"
-        return functions.IDAFunction.get_all()
+        return code.IDAFunction.get_all()
 
     @property
     def Instrs(self):
         "all instructions in IDB"
-        return functions.IDAInstr.get_all()
+        return code.IDAInstr.get_all()
 
     @property
     def Data(self):

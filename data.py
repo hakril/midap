@@ -18,9 +18,7 @@ class Data(elt.IDANamedSizedElt):
     _get_value_func = None
 
     def value(self):
-        """ 
-            [property] [get | set]
-            The value of the Data object.
+        """[RW] The value of the Data object.
             DataByte.value = 0x42 will patch the byte at DataByte.addr
         """
         if self._get_value_func is None:
@@ -159,6 +157,8 @@ class ByteData(Data):
     _get_value_func = staticmethod(idc.Byte)
     match = staticmethod(Data.is_byte.fget)
     
+Byte = ByteData
+    
 class ASCIIByteData(ByteData):
     def __IDA_repr__(self):
         c = chr(self.value) if self.value != 0 else "\\x00"
@@ -176,16 +176,21 @@ class WordData(Data):
     _get_value_func = staticmethod(idc.Word)
     match = staticmethod(Data.is_word.fget)
     
+Word = WordData
+    
 class DwordData(Data):
     size = 4
     _get_value_func = staticmethod(idc.Dword)
     match = staticmethod(Data.is_dword.fget)
     
-    
+Dword = DwordData 
+ 
 class QwordData(Data):
     size = 8
     _get_value_func = staticmethod(idc.Qword)
     match = staticmethod(Data.is_qword.fget)
+    
+Qword = QwordData
   
 # TODO : being able to create String from sub string ?
 class ASCIIData(Data): # auto MakeStr if is_ASCII ?

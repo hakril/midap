@@ -4,7 +4,7 @@ import idc
 import idaapi
 
 import elt
-import functions
+import code
 import xref
 import ida_import
 import idb
@@ -17,7 +17,7 @@ import segment
 
 from utils import int_hex
 
-all_submodules_name = ['elt', 'functions', 'xref', 'ida_import', 'idb', 'data', 'idastruct', 'stack', 'flags', 'cast', 'segment']
+all_submodules_name = ['elt', 'code', 'xref', 'ida_import', 'idb', 'data', 'idastruct', 'stack', 'flags', 'cast', 'segment']
 
 
 def get_full_submodule_name(name):
@@ -53,21 +53,21 @@ def fixup_late_import():
 
 # Put type dispatch functions elsewhere
 def ihere(addr=None):
-    "Typed here(): return current :class:`midap.functions.IDAInstr`"
+    "Typed here(): return current :class:`midap.code.IDAInstr`"
     elt = ehere(addr)
     return cast.code_cast(elt)
 
 def bhere(addr=None):
-    "Typed here(): return current :class:`midap.functions.IDABlock`"
+    "Typed here(): return current :class:`midap.code.IDABlock`"
     f = fhere(addr)
     addr = idc.here()
     return [b for b in f.Blocks if addr in b][0]
 
 def fhere(addr=None):
-    "Typed here(): return current :class:`midap.functions.IDAFunction`"
+    "Typed here(): return current :class:`midap.code.IDAFunction`"
     if addr is None:
         addr = idc.here()
-    return functions.IDAFunction.get_func(addr)
+    return code.IDAFunction.get_func(addr)
 
 def dhere(addr=None):
     "Typed here(): return current Data"
@@ -76,12 +76,13 @@ def dhere(addr=None):
     return data.Data.new_data_by_type(addr)
 
 def shere(addr=None):
+    "Typed here(): return current :class:`midap.segment.IDASegment`"
     if addr is None:
         addr = idc.here()
     return segment.IDASegment(addr)
 
 def ehere(addr=None):
-    "low typed here(): return current IDAElt for badic operations"
+    "low typed here(): return current :class:`midap.elt.IDAElt` for basic operation"
     if addr is None:
         addr = idc.here()
     return data.elt.IDAElt(addr)

@@ -5,7 +5,7 @@ import idaapi
 import idautils
 
 import elt
-import functions
+import code
 
 
 # TODO : merge both code
@@ -30,7 +30,7 @@ class IDAExport(elt.IDANamedElt):
         "DAT FUNCTION"
         if self._func is not None:
             return self._func
-        self._func = functions.IDAFunction(self.addr)
+        self._func = code.IDAFunction(self.addr)
         return self._func
         
     
@@ -78,7 +78,7 @@ class IDAExportList(object):
         return self.export_by_ordinal[ord]
         
 
-class IDAImport(functions.IDACodeElt): # CodeElt to do rjump on import
+class IDAImport(code.IDACodeElt): # CodeElt to do rjump on import
 
     def __init__(self, module_name, addr, name, ord):
         #name is ignored and will be accessed using the property of IDANamedElt

@@ -1,6 +1,6 @@
 import idc
 
-late_import = ['elt', 'functions', 'data', 'idb']
+late_import = ['elt', 'code', 'data', 'idb']
 
 
 
@@ -57,7 +57,7 @@ class CodeXref(Xref): #name it CodeToCode ?
 
     @property
     def frm(self):
-        return functions.IDAInstr(self.xref.frm)
+        return code.IDAInstr(self.xref.frm)
 
     @property   
     def to(self):
@@ -66,10 +66,10 @@ class CodeXref(Xref): #name it CodeToCode ?
         dst = elt.IDAElt(self.xref.to)
         if not dst.is_code:
             if dst in idb.current.imports:
-                return functions.IDAImportInstr(self.xref.to, idb.current.imports[dst])
+                return code.IDAImportInstr(self.xref.to, idb.current.imports[dst])
             else:
-                return functions.IDAUndefInstr(self.xref.to)
-        return functions.IDAInstr(self.xref.to)
+                return code.IDAUndefInstr(self.xref.to)
+        return code.IDAInstr(self.xref.to)
 
     @property
     def is_call(self):
@@ -124,7 +124,7 @@ class CodeToDataXref(DataXref):
     """ Code to Data xref """
     @property
     def frm(self):
-        return functions.IDAInstr(self.xref.frm)
+        return code.IDAInstr(self.xref.frm)
 
 
     @staticmethod
@@ -136,7 +136,7 @@ class DataToCodeXref(DataXref):
     """ Data to Code xref """
     @property
     def to(self):
-        return functions.IDAInstr(self.xref.to)
+        return code.IDAInstr(self.xref.to)
 
 
     @staticmethod
