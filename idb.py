@@ -9,6 +9,11 @@ import elt
 late_import = ['code', 'data', 'idastruct', 'segment']
 
 class IDB(object):
+    """Represent the current IDB
+    
+    This class allows to work on the totality of the code/data of the IDB.
+    """ 
+
     current = None
 
     def __new__(cls, *args, **kwargs):
@@ -20,32 +25,21 @@ class IDB(object):
 
     def __init__(self):
         # Already exist: no more init
-        # TODO: Use (FT_PE | FT_ELF) instead
-        if hasattr(self, 'init'):
-            return
-        self.init = True
-
-    @property
-    def format(self):
-        "really useful ? better IDA api for that ?"
-        filetype = idaapi.get_file_type_name()
-        # This code is really dumb..
-        if "PE" in filetype:
-            format = "PE"
-        elif "ELF" in filetype:
-            format = "ELF"
-        elif "Binary file" == filetype:
-            format = "Binary file"
-        else:
-            format = "Unknow"
-        return format
+        pass
         
     @property
     def imports(self):
+        """The imports of the IDB 
+        
+        "type: :class:`midap.ida_import.IDAImportList`"""
         return ida_import.IDAImportList()
         
     @property
     def export(self):
+        """The imports of the IDB
+        
+            :type: :class:`midap.ida_import.IDAExportList`
+        """
         return ida_import.IDAExportList()
         
     @property
@@ -57,36 +51,38 @@ class IDB(object):
         return code.IDAFunction(main_addr)
 
     @property
-    def is_pe(self): #  You can do better than that..
-        return self.format == "PE"
-
-    @property
-    def is_elf(self): #  You can do better than that..
-        return self.format == "ELF"
-
-    @property
     def Functions(self):
-        "all functions in IDB"
+        """All functions in IDB
+        
+        :type: [:class:`midap.code.IDAFunction`]"""
         return code.IDAFunction.get_all()
 
     @property
     def Instrs(self):
-        "all instructions in IDB"
+        """All instructions in IDB
+        
+        :type: [:class:`midap.code.IDAInstr`]"""
         return code.IDAInstr.get_all()
 
     @property
-    def Data(self):
-        "all datas in IDB"
+    def Datas(self):
+        """All datas in IDB
+        
+            :type: see DataType (TODO)"""
         return data.Data.get_all()
 
     @property
     def Segments(self):
-        "dict {name : segment} of all segments in IDB"
+        """dict of all segments in the IDB
+        
+        :type: dict{str : :class:`midap.segments.IDASegment`}"""
         return {s.name : s for s in [segment.IDASegment(seg) for seg in idautils.Segments()]}
 
     @property
     def Strings(self): # This will create new strings: put a name to it
-        "All strings in IDB"
+        """All strings in IDB
+        
+            :type: [:class:`midap.data.ASCIIData`]"""
         return self.get_strings()
 
     @staticmethod
@@ -112,29 +108,39 @@ class IDB(object):
 
     @property
     def Structs(self):
-        "All structs definitions in the IDB"
-        return [struct.StructDef(s[1]) for s in idautils.Structs()]
+        """All structs definitions in the IDB
+        
+        :type: [:class:`midap.struct.StructDef`]"""
+        return [idastruct.StructDef(s[1]) for s in idautils.Structs()]
 
     @property
     def imagebase(self):
+        """The base image of the IDB
+        
+        :type: int"""
         return idaapi.get_imagebase()
 
     def rebase_delta(self, delta, flags=idc.MSF_FIXONCE):
+        """Rebase the IDB to +delta"""
         return idc.rebase_program(delta, flags)
 
     def rebase_fix(self, addr, flags=idc.MSF_FIXONCE):
+        """Rebase the IDB at address `addr`"""
         delta = addr - self.imagebase
         return self.rebase_delta(delta, flags)
 
 
 class Selection(elt.IDASizedElt):
-	def __init__(self):
-		start, end = idc.SelStart(), idc.SelEnd()
-		if start == idc.BADADDR:
-			raise ValueError("No selection")
-		super(Selection, self).__init__(start, end)
+    """Represent the cursor selection
+    
+    Can be read / patched / ... (see base class)"""
+    def __init__(self):
+        start, end = idc.SelStart(), idc.SelEnd()
+        if start == idc.BADADDR:
+            raise ValueError("No selection")
+        super(Selection, self).__init__(start, end)
 
-	def __repr__(self):
-		return "<{0} <from {1} to {2}>>".format(self.__class__.__name__, hex(self.addr), hex(self.endADDR))
+    def __repr__(self):
+        return "<{0} <from {1} to {2}>>".format(self.__class__.__name__, hex(self.addr), hex(self.endADDR))
 
 current = IDB()

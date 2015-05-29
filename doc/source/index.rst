@@ -11,5 +11,7 @@ midap: Pythonic IDAPython Wrapper
     :maxdepth: 3
    
     entry.rst
+    idb.rst
     elt.rst
     code.rst
+    

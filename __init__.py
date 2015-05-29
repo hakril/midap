@@ -93,6 +93,9 @@ def here(addr=None):
     """
     elt = ehere(addr)
     return cast.data_or_code_cast(elt)
+    
+def Buffer(addr, size):
+    return elt.IDASizedElt(addr, addr + size)
 
 
 
