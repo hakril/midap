@@ -252,7 +252,7 @@ class ASCIIData(Data): # auto MakeStr if is_ASCII ?
     @property
     def str(self):
         """ The actual decoded python string """
-        print("CALL WITH {0} | {1}".format(self.addr, self.type))
+        #print("CALL WITH {0} | {1}".format(self.addr, self.type))
         return idc.GetString(self.addr, -1, self.type)
     
     @property

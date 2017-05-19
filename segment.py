@@ -76,7 +76,7 @@ class IDASegment(elt.IDANamedSizedElt):
         return seg.bitness
         
     def set_addressing(self, value):
-        return idc.SetSegAddressing(selt.start, value)
+        return idc.SetSegAddressing(self.start, value)
         
     addressing_doc = """addressing bitness of the segment\n0: 16bit\n1: 32bit\n2: 64bit"""
         

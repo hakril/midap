@@ -2,6 +2,7 @@ import sys
 
 import idc
 import idaapi
+import idautils
 
 import elt
 import code
@@ -14,8 +15,7 @@ import stack
 import flags
 import cast
 import segment
-
-from utils import int_hex
+from utils import resolve, int_hex
 
 all_submodules_name = ['elt', 'code', 'xref', 'ida_import', 'idb', 'data', 'idastruct', 'stack', 'flags', 'cast', 'segment']
 
@@ -60,7 +60,8 @@ def ihere(addr=None):
 def bhere(addr=None):
     "Typed here(): return current :class:`midap.code.IDABlock`"
     f = fhere(addr)
-    addr = idc.here()
+    if addr is None:
+        addr = idc.here()
     return [b for b in f.Blocks if addr in b][0]
 
 def fhere(addr=None):
@@ -93,11 +94,22 @@ def here(addr=None):
     """
     elt = ehere(addr)
     return cast.data_or_code_cast(elt)
-    
+
+def where(addr=None):
+    # idc.GetFuncOffset exist but might return something like MySub:loc_FFFFFFFFFC4948A2
+    # And the loc_whatever might change if we rebase the IDB
+    # So this function return "name+offset"
+    if addr is None:
+        addr = idc.here()
+    f = fhere(addr)
+    offset = hex(addr - f.addr)
+    if offset[-1] == "L":
+        offset = offset[:-1]
+    return "{0}+{1}".format(f.name, offset)
+
+
 def Buffer(addr, size):
     return elt.IDASizedElt(addr, addr + size)
-
-
 
 # TODO : move this elsewhere
 
@@ -112,6 +124,12 @@ def find_all_bin(str):
         start_addr = addr
     return
 
+
+
+def dlist(s):
+    s = s.lower()
+    elts = dir(idc) + dir(idaapi) + dir(idautils)
+    return [x for x in elts if s in x.lower()]
 
 fixup_late_import()
 

@@ -108,7 +108,7 @@ class IDB(object):
 
     @property
     def Structs(self):
-        """All structs definitions in the IDB
+        """All structures definitions in the IDB
         
         :type: [:class:`midap.struct.StructDef`]"""
         return [idastruct.StructDef(s[1]) for s in idautils.Structs()]
